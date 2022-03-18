@@ -1,4 +1,4 @@
-trash
+trash/
 *.pyc
-to_delete
-__pycache__
+to_delete/
+__pycache__/
