@@ -1,0 +1,4 @@
+trash
+*.pyc
+to_delete
+__pycache__
