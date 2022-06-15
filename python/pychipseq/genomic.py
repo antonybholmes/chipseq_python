@@ -1,27 +1,46 @@
 # -*- coding: utf-8 -*-
 """
-Functions for genomics
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with 
+this program. If not, see <https://www.gnu.org/licenses/>. 
 
-Created on Sat Jan 31 16:49:34 2015
-
-@author: antony
+Copyright (C) 2022 Antony Holmes.
 """
 
+from abc import ABC, abstractmethod
 import collections
 import re
 import sys
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, Mapping, Union
 
-import pychipseq.text
+from . import text
 
 TELOMERE_SIZE = 100000
 
-
 class Location:
-    def __init__(self, chr, start, end):
+    """
+    Represents a genomic location.
+    """
+
+    def __init__(self, chr:str, start:int, end:int):
+        """
+        Creates a new location object
+
+        Args:
+            chr (str): 1 based chromosome, e.g. "chr2"
+            start (int): 1 based start location.
+            end (int): 1 based end location.
+        """
         self._chr = chr
-        self._start = start
-        self._end = end
+        self._start = max(1, start)
+        # end cannot be the start
+        self._end = max(self._start, end)
         self._length = end - start + 1
 
     @property
@@ -53,7 +72,7 @@ class Location:
 class FeatureSet:
     def __init__(self, start):
         self._start: int = start
-        self._values: List[Any] = []
+        self._values: list[Any] = []
 
     @property
     def start(self):
@@ -106,7 +125,7 @@ class GappedSearch:
         self._locked = True
 
     def get_closest_features(self, location: Location) -> FeatureSet:
-        featureSets: List[FeatureSet] = self.get_features(location)
+        featureSets: list[FeatureSet] = self.get_features(location)
 
         min_d = sys.maxint
         ret = None
@@ -120,7 +139,7 @@ class GappedSearch:
 
         return ret
 
-    def get_features(self, location: Location) -> List[FeatureSet]:
+    def get_features(self, location: Location) -> list[FeatureSet]:
         """
         Return a list of features closest to a location which then
         be tested for overlap etc
@@ -145,7 +164,7 @@ class GappedSearch:
 
         return ret
 
-    def _get_start_index(self, indices: List[int], start: int, startMode: bool):
+    def _get_start_index(self, indices: list[int], start: int, startMode: bool):
         if len(indices) < 2:
             return 0
 
@@ -214,12 +233,18 @@ class BlockSearch:
 
         return ret
 
-    def get_features(self, location: Location) -> List[FeatureSet]:
+    def get_features(self, location: Location) -> list[FeatureSet]:
         """
         Return a list of features closest to a location which then
         be tested for overlap etc
-        """
 
+        Args:
+            location (Location): location to annotate
+
+        Returns:
+            list[FeatureSet]: set of features for testing for strict overlap
+        """
+        
         ret = []
 
         if location.chr not in self._features:
@@ -242,25 +267,37 @@ def location_string(chr: str, start: Union[int, str], end: Union[int, str]) -> s
     Returns a standardized string representation of a genomic location.
 
     Args:
-        chr:    chromosome
-        start:  1-based start location
-        end:    1-based end location
+        chr (str):    chromosome
+        start (int):  1-based start location
+        end (int):    1-based end location
     Returns:
-        A chr:start-end formatted string.
+        str: A chr:start-end formatted string.
     """
     return f'{chr}:{str(start)}-{str(end)}'
 
 
 def is_location(location: str):
     """
-    Returns true if location is a genomic location
+    Returns true if string looks like a location
+
+    Args:
+        location (str): a location string, e.g "chr1:1-2"
+
+    Returns:
+        bool: True if string looks like a location
     """
     return re.match(r'(chr.+):(\d+)-(\d+)', location)
 
 
-def is_chr(location: str):
+def is_chr(location: str) -> bool:
     """
     Returns true if location is a chr
+
+    Args:
+        location (str): a location string, e.g "chr1:1-2"
+
+    Returns:
+        bool: True if contains "chr"
     """
     return re.match(r'(chr.+)', location)
 
@@ -270,11 +307,12 @@ def parse_location(location: str, padding5p: int = 0, padding3p: int = 0) -> Loc
     Parses a location string, e.g. 'chr1:1-100' into a location object.
 
     Args:
-        location:       A location string.
-        padding5p:      Add padding to the 5p end.
+        location (str): A location string
+        padding5p (int, optional): Add padding to the 5p end. Defaults to 0.
+        padding3p (int, optional): Add padding to the 3p end. Defaults to 0.
 
     Returns:
-        A location object representing the location string.
+        Location: A location object representing the location string.
     """
 
     matcher = re.match(r'.*(chr.+):(\d+)-(\d+).*', location)
@@ -286,21 +324,32 @@ def parse_location(location: str, padding5p: int = 0, padding3p: int = 0) -> Loc
     return Location(chr, start - padding5p, end + padding3p)
 
 
-def parse_location_cols(tokens, offset=0):
+def parse_location_cols(tokens: list[str], offset:int=0) -> Location:
     return Location(tokens[offset], int(tokens[offset + 1]), int(tokens[offset + 2]))
 
+def mid(location: Location):
+    return (location.start + location.end) / 2
 
-def mid_point(location):
-    return int((location.start + location.end) / 2)
+def mid_point(location:Location) -> int:
+    return int(mid(location))
 
 
-def center_location(location):
+def center_location(location:Location) -> Location:
+    """Returns the mid point of a location as a location object.
+
+    Args:
+        location (Location): Genomic location
+
+    Returns:
+        Location:  Genomic location
+    """
+
     c = mid_point(location)
 
     return Location(location.chr, c, c)
 
 
-def pad_location(location, padding5p=0, padding3p=0):
+def pad_location(location:Location, padding5p:int=0, padding3p:int=0):
     return Location(location.chr, location.start - padding5p, location.end + padding3p)
 
 
@@ -328,7 +377,7 @@ def overlap_locations(location1: Location, location2: Location) -> Union[None, L
     return Location(location1.chr, max_start, min_end)
 
 
-def is_overlapping(location1: Location, location2: Location):
+def is_overlapping(location1: Location, location2: Location) -> bool:
     if location1.chr != location2.chr:
         return False
 
@@ -340,12 +389,10 @@ def is_overlapping(location1: Location, location2: Location):
     return max_start <= min_end  # return max_start >= min_start and max_start < min_end
 
 
-def mid(location: Location):
-    return (location.start + location.end) / 2
 
 
 def get_closest_tss(tss):
-    closest = pychipseq.text.NA
+    closest = text.NA
 
     min_d = 1000000
     min_abs_d = 1000000
@@ -549,28 +596,24 @@ class GenomicBedOverlap(GenomicFeaturesOverlap):
         return ret
 
 
-class Annotation:
-    def get_names(self) -> List[str]:
-        """
-        Should return the name of the column or an array of columns
-        """
-        raise NotImplementedError()
+class Annotation(ABC):
+    @abstractmethod
+    def get_names(self) -> list[str]:
+        ...
 
-    def annotate(self, location: Location) -> List[Union[str, int, float]]:
-        """
-        Should return a list of items
-        """
-        raise NotImplementedError()
+    def annotate(self, location: Location) -> list[Union[str, int, float]]:
+        return []
 
-    def update_row(self, location: Location, row_map: Mapping[str, Any]) -> List[Union[str, int, float]]:
+    def update_row(self, location: Location, row_map: Mapping[str, Any]) -> list[Union[str, int, float]]:
         return self.annotate(location)
 
 
-class ClassifyRegion:
+class ClassifyRegion(ABC):
     """
     Returns a class label for a region, such as identifying
     a telomere.
     """
 
+    @abstractmethod
     def get_classification(self, location: Location) -> str:
-        raise NotImplementedError()
+        ...

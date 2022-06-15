@@ -8,19 +8,21 @@ Created on Mon Oct  6 11:52:41 2014
 """
 
 import re
+from . import text
 
-import pychipseq.genes
-import pychipseq.text
-import pychipseq.headings
+def get_sample_column_count(header:list[str]) -> int:
+  """
+  Returns the number of sample columns in a gene file.
 
-def get_sample_column_count(header):
+  Args:
+      header (list[str]): table column header
+
+  Returns:
+      int: index of first column containing "Sample"
   """
-  Returns the number of sample columns in a gene file
-  """
-  
   ret = 0
   
-  c = pychipseq.text.find_index(header, "Sample")
+  c = text.find_index(header, "Sample")
   
   for i in range(c, len(header)):
     if not re.match(r'^Sample.*', header[i]):

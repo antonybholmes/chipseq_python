@@ -14,7 +14,7 @@ import pychipseq.text
 import pychipseq.sample
 import pychipseq.genes
 
-class PeakExpression(object):
+class PeakExpression:
   """
   Add expression to peaks with gene symbols
   """

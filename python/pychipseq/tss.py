@@ -10,10 +10,10 @@ Created on Mon Aug 25 17:25:56 2014
 import collections
 import sys
 import re
-from typing import Any, List, Mapping, Union
+from typing import Any, List, Mapping, Optional, Union
 import numpy as np
 
-import pychipseq.genomic
+from . import genomic
 import pychipseq.annotation
 import pychipseq.genes
 
@@ -51,7 +51,8 @@ class RefSeqTssClassification:
         # "promoter_-" + str(prom_ext_5p / 1000) + "/+" + str(prom_ext_3p / 1000)
         self._promoter_label = 'promoter'
 
-        print(f'RefSeqTssClassification: Loading from {file}...', file=sys.stderr)
+        print(
+            f'RefSeqTssClassification: Loading from {file}...', file=sys.stderr)
 
         f = open(file, 'r')
 
@@ -98,7 +99,8 @@ class RefSeqTssClassification:
                 promoter_start = end - prom_ext_3p
                 promoter_end = end + prom_ext_5p
 
-            variant_id = pychipseq.genes.create_variant(refseq, chr, start, end)
+            variant_id = pychipseq.genes.create_variant(
+                refseq, chr, start, end)
 
             self._variants[refseq].add(variant_id)
             self._gene_strands[variant_id] = strand
@@ -117,7 +119,6 @@ class RefSeqTssClassification:
         f.close()
 
         print('Finished.', file=sys.stderr)
-
 
     def get_classification(self, variant_id, mid_point):
         refseq = pychipseq.genes.parse_id_from_variant(variant_id)
@@ -292,7 +293,8 @@ class RefSeqAnnotation:
             start_bin = int((start - max_offset) / bin_size)
             end_bin = int((end + max_offset) / bin_size)
 
-            variant_id = pychipseq.genes.create_variant(refseq, chr, start, end)
+            variant_id = pychipseq.genes.create_variant(
+                refseq, chr, start, end)
 
             for bin in range(start_bin, end_bin + 1):
                 # apparently refseq genes from the ucsc always report
@@ -388,18 +390,21 @@ class RefSeqAnnotation:
         return genes
 
 
-class RefSeqTss(pychipseq.genomic.Annotation):
+class RefSeqTss(genomic.Annotation):
     """
     Determines the closest gene(s) to a given position.
     """
 
-    def __init__(self, file:str, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p, prom_ext_3p, bin_size:int=1000):
+    def __init__(self, file: str, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int, bin_size: Optional[int] = 1000):
         self._refseq_genes = refseq_genes
-        self._gene_start_map = collections.defaultdict(lambda: collections.defaultdict(set))
-        self._gene_index_map = collections.defaultdict(lambda: collections.defaultdict(str))
+        self._gene_start_map = collections.defaultdict(
+            lambda: collections.defaultdict(set))
+        self._gene_index_map = collections.defaultdict(
+            lambda: collections.defaultdict(str))
         self._starts = collections.defaultdict(list)
         self._bin_size = bin_size
-        self._bins = collections.defaultdict(lambda: collections.defaultdict(list))
+        self._bins = collections.defaultdict(
+            lambda: collections.defaultdict(list))
         self._refseq = RefSeqTssClassification(file, prom_ext_5p, prom_ext_3p)
         self._promoter_type = f'(prom=-{prom_ext_5p / 1000}/+{prom_ext_3p / 1000}kb)'
         self._header = []
@@ -407,11 +412,11 @@ class RefSeqTss(pychipseq.genomic.Annotation):
     def get_names(self):
         return self._header
 
-    def update_row(self, location:pychipseq.genomic.Location, row_map:Mapping[str, Any]):
-        
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
+
         tss_gene = self.get_closest_gene(location)
         gene_annotation = self._refseq_genes.get_gene(tss_gene.id)
-        
+
         ret = []
 
         # Closest TSS gene symbol
@@ -433,8 +438,7 @@ class RefSeqTss(pychipseq.genomic.Annotation):
 
         return ret
 
-
-    def get_closest_gene(self, location:pychipseq.genomic.Location) -> TssGene:
+    def get_closest_gene(self, location: genomic.Location) -> TssGene:
         """
         Returns the genes that are closest to a given location.
 
@@ -445,11 +449,11 @@ class RefSeqTss(pychipseq.genomic.Annotation):
         Returns:
             A list of genes with the distance of their TSS from the peak.
         """
-        mid_point = pychipseq.genomic.mid_point(location)
+        mid_point = genomic.mid_point(location)
 
         #print('aha', mid_point, file=sys.stderr)
 
-        # use a binary style search to find closest peak, 
+        # use a binary style search to find closest peak,
         # we keep track of closest end and start we find
         # hence we do not update start and end by adding
         # or subtracting 1, but instead use the test point
@@ -461,17 +465,23 @@ class RefSeqTss(pychipseq.genomic.Annotation):
         ps = 0
         pe = len(self._starts[location.chr]) - 1
 
-        while pe - ps > 1: #while pe >= ps:
-            pm = int((pe + ps) / 2)
+        if mid_point < self._starts[location.chr][ps]:
+            return self.get_annotation(location.chr, mid_point, self._starts[location.chr][ps])
+
+        if mid_point > self._starts[location.chr][pe]:
+            return self.get_annotation(location.chr, mid_point, self._starts[location.chr][pe])
+
+        while pe - ps > 1:  # while pe >= ps:
+            pm = int((ps + pe) / 2)
 
             test_start = self._starts[location.chr][pm]
 
             #print('test', ps, pe, pm, test_start, self._gene_start_map[location.chr][test_start], file=sys.stderr)
-            
+
             if test_start > mid_point:
-                pe = pm # - 1
+                pe = pm  # - 1
             elif test_start < mid_point:
-                ps = pm # + 1
+                ps = pm  # + 1
             else:
                 # perfect match
                 return self.get_annotation(location.chr, mid_point, test_start)
@@ -489,15 +499,23 @@ class RefSeqTss(pychipseq.genomic.Annotation):
 
         return self.get_annotation(location.chr, mid_point, start)
 
-
     def get_annotation(self, chr, mid_point, start) -> TssGene:
         # Pick the first one we find
         variant_id = sorted(self._gene_start_map[chr][start])[0]
         gene = self._refseq.get_classification(variant_id, mid_point)
         return gene
-        
 
-    def get_n_closest_genes(self, location, n=5) -> List[TssGene]:
+    def get_n_closest_genes(self, location: genomic.Location, n: int = 5) -> List[TssGene]:
+        """
+        Find the n closest genes to a location.
+
+        Args:
+            location:   a location object
+            n:          number of closest genes to return
+        Returns:
+            A list of closest gene objects.
+        """
+
         closest_gene = self.get_closest_gene(location)
 
         # find index of gene in list of starts
@@ -525,9 +543,10 @@ class RefSeqTss(pychipseq.genomic.Annotation):
 
         variants = np.concatenate([before_variants, after_variants])
 
-        mid_point = pychipseq.genomic.mid_point(location)
+        mid_point = genomic.mid_point(location)
 
-        genes = [self._refseq.get_classification(v, mid_point) for v in variants]
+        genes = [self._refseq.get_classification(
+            v, mid_point) for v in variants]
 
         gene_dist_map = collections.defaultdict(list)
 
@@ -547,10 +566,10 @@ class RefSeqTss(pychipseq.genomic.Annotation):
 
 class RefSeqStart(RefSeqTss):
     """
-    Determines the closest gene(s) to a given position.
+    Determines the closest gene(s) to a given position by TSS.
     """
 
-    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p, prom_ext_3p):
+    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
         super().__init__(file, refseq_genes, prom_ext_5p, prom_ext_3p)
 
         print(f'RefSeqStart: Loading from {file}...', file=sys.stderr)
@@ -595,7 +614,8 @@ class RefSeqStart(RefSeqTss):
             # If the gene is on the negative strand, the promoter is around the
             # end coordinate on the forward strand
 
-            variant_id = pychipseq.genes.create_variant(refseq, chr, start, end)
+            variant_id = pychipseq.genes.create_variant(
+                refseq, chr, start, end)
 
             if strand == "+":
                 self._gene_start_map[chr][start].add(variant_id)
@@ -617,7 +637,7 @@ class RefSeqStart(RefSeqTss):
                     self._gene_index_map[chr][variant_id] = i
 
                 #bin = int(start / self._bin_size)
-                #self._bins[chr][bin].append(start)
+                # self._bins[chr][bin].append(start)
 
         print('Finished.', file=sys.stderr)
 
@@ -631,14 +651,15 @@ class RefSeqStart(RefSeqTss):
 
 class RefSeqEnd(RefSeqTss):
     """
-    Find the closest gene to a given location using the genes end
-    location.
+    Find the closest gene to a given location using the genes end. Secondary to
+    RefSeqStart.
     """
 
-    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p, prom_ext_3p):
+    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
         super().__init__(file, refseq_genes, prom_ext_5p, prom_ext_3p)
-        
-        print(f'RefSeqEnd: Loading from {file} {prom_ext_5p} {prom_ext_3p}...', file=sys.stderr)
+
+        print(
+            f'RefSeqEnd: Loading from {file} {prom_ext_5p} {prom_ext_3p}...', file=sys.stderr)
 
         f = open(file, 'r')
 
@@ -677,7 +698,8 @@ class RefSeqEnd(RefSeqTss):
             # If the gene is on the negative strand, the promoter is around the
             # end coordinate on the forward strand
 
-            variant_id = pychipseq.genes.create_variant(refseq, chr, start, end)
+            variant_id = pychipseq.genes.create_variant(
+                refseq, chr, start, end)
 
             #sys.stderr.write("var id " + variant_id + "\n")
 
@@ -701,27 +723,27 @@ class RefSeqEnd(RefSeqTss):
                     self._gene_index_map[chr][variant_id] = i
 
                 #bin = int(start / self._bin_size)
-                #self._bins[chr][bin].append(start)
+                # self._bins[chr][bin].append(start)
 
         print('Finished.', file=sys.stderr)
 
         self._header.append(f'Closest End {pychipseq.headings.REFSEQ_ID}')
         self._header.append(f'Closest End {pychipseq.headings.ENTREZ_ID}')
         self._header.append(f'Closest End {pychipseq.headings.GENE_SYMBOL}')
-        self._header.append(f'Relative To Closest Gene End {self._promoter_type}')
+        self._header.append(
+            f'Relative To Closest Gene End {self._promoter_type}')
         self._header.append(f'End Closest Distance')
 
 
-
-class OverlapTss(pychipseq.genomic.Annotation):
+class OverlapTss(genomic.Annotation):
     """
     Find the closest gene to a given location using the genes end
     location.
     """
 
-    def __init__(self, file, block_size=100):
-        self._search = pychipseq.genomic.BlockSearch(block_size)
-        
+    def __init__(self, file: str, block_size: int = 100):
+        self._search = genomic.BlockSearch(block_size)
+
         print(f'OverlapTss: Loading from {file}...', file=sys.stderr)
 
         f = open(file, 'r')
@@ -767,7 +789,8 @@ class OverlapTss(pychipseq.genomic.Annotation):
                 s = end
 
             # only interested in tss
-            gene = pychipseq.genes.RefSeqGene(refseq, entrez, symbol, strand, chr, s, s)
+            gene = pychipseq.genes.RefSeqGene(
+                refseq, entrez, symbol, strand, chr, s, s)
 
             self._search.add_feature(gene, gene)
 
@@ -778,18 +801,17 @@ class OverlapTss(pychipseq.genomic.Annotation):
     def get_names(self):
         return ["Overlaps TSS"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
         featureSets = self._search.get_features(location)
 
         ret = set()
 
         for featureSet in featureSets:
             for gene in featureSet:
-                if pychipseq.genomic.is_overlapping(location, gene):
+                if genomic.is_overlapping(location, gene):
                     ret.add(gene.symbol)
 
         if len(ret) == 0:
             ret.add(pychipseq.text.NA)
 
         return [';'.join(sorted(ret))]
-

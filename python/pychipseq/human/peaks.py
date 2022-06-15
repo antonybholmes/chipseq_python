@@ -9,16 +9,15 @@ import pychipseq.tss
 import pychipseq.human.tss
 import pychipseq.human.annotation
 
-import pychipseq.genomic
-import pychipseq.headings
-import pychipseq.text
-import pychipseq.sample
-import pychipseq.peaks
-import pychipseq.genes
-import pychipseq.human.genomic
-import pychipseq.tad
-import pychipseq.human.tad
-import pychipseq.human.mir
+from .. import genomic
+from .. import headings
+from .. import text
+from .. import peaks
+from .. import genes
+from . import genomic as hg
+from .. import tad
+from . import tad as ht
+from . import mir as hm
 
 
 class GeneOrientatedPeaks(object):
@@ -119,26 +118,26 @@ class GeneOrientatedPeaks(object):
         # skip header
         header = f.readline().strip().split('\t')
 
-        location_column = pychipseq.text.find_index(
-            header, pychipseq.headings.LOCATION)
-        entrez_column = pychipseq.text.find_index(
-            header, pychipseq.headings.ENTREZ_ID)
-        refseq_column = pychipseq.text.find_index(
-            header, pychipseq.headings.REFSEQ_ID)
-        symbol_column = pychipseq.text.find_index(
-            header, pychipseq.headings.GENE_SYMBOL)
-        type_column = pychipseq.text.find_index(header, 'Relative To Gene')
-        #p_column = pychipseq.text.find_index(header, pychipseq.headings.P_VALUE)
-        #score_column = pychipseq.text.find_index(header, pychipseq.headings.SCORE)
-        tss_column = pychipseq.text.find_index(
-            header, pychipseq.headings.TSS_DISTANCE)
-        centromere_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CENTROMERE)
+        location_column = text.find_index(
+            header, headings.LOCATION)
+        entrez_column = text.find_index(
+            header, headings.ENTREZ_ID)
+        refseq_column = text.find_index(
+            header, headings.REFSEQ_ID)
+        symbol_column = text.find_index(
+            header, headings.GENE_SYMBOL)
+        type_column = text.find_index(header, 'Relative To Gene')
+        #p_column = text.find_index(header, headings.P_VALUE)
+        #score_column = text.find_index(header, headings.SCORE)
+        tss_column = text.find_index(
+            header, headings.TSS_DISTANCE)
+        centromere_column = text.find_index(
+            header, headings.CENTROMERE)
 
-        mir_column = pychipseq.text.find_index(
-            header, pychipseq.headings.MIR_SYMBOL)
-        mir_type_column = pychipseq.text.find_index(header, 'Relative To miR')
-        mss_column = pychipseq.text.find_index(header, 'mIR Start Distance')
+        mir_column = text.find_index(
+            header, headings.MIR_SYMBOL)
+        mir_type_column = text.find_index(header, 'Relative To miR')
+        mss_column = text.find_index(header, 'mIR Start Distance')
 
         for line in f:
             ls = line.strip()
@@ -149,9 +148,9 @@ class GeneOrientatedPeaks(object):
             tokens = ls.split('\t')
 
             type = tokens[type_column]
-            p = pychipseq.genes.find_best_p_value(
+            p = genes.find_best_p_value(
                 header, tokens)  # float(tokens[p_column])
-            score = pychipseq.genes.find_best_score(
+            score = genes.find_best_score(
                 header, tokens)  # = float(tokens[score_column])
             location = tokens[location_column]
 
@@ -169,7 +168,7 @@ class GeneOrientatedPeaks(object):
                 refseq = refseqs[i]
                 tss = tsses[i]
 
-                if refseq != pychipseq.text.NA:
+                if refseq != text.NA:
                     self.refseqs.add(refseq)
                     self.collapsed_entrezes[refseq] = entrez
                     self.collapsed_symbols[refseq] = symbol
@@ -182,7 +181,7 @@ class GeneOrientatedPeaks(object):
 
             mir = tokens[mir_column]
 
-            if mir != pychipseq.text.NA:
+            if mir != text.NA:
                 self.mirs.add(mir)
                 self.collapsed_types[mir].append(tokens[mir_type_column])
                 self.collapsed_p[mir].append(p)
@@ -198,21 +197,21 @@ class GeneOrientatedPeaks(object):
 
     def get_header(self):
         ret = []
-        ret.append(pychipseq.headings.REFSEQ_ID)
-        ret.append(pychipseq.headings.ENTREZ_ID)
-        ret.append(pychipseq.headings.GENE_SYMBOL)
-        #ret.append(f'\tGEP Affy GCvsN")
-        #ret.append(f'\tGEP Affy GCvsM")
-        #ret.append(f'\tRNAseq GCvsN")
-        #ret.append(f'\tRNAseq GCvsM")
+        ret.append(headings.REFSEQ_ID)
+        ret.append(headings.ENTREZ_ID)
+        ret.append(headings.GENE_SYMBOL)
+        # ret.append(f'\tGEP Affy GCvsN")
+        # ret.append(f'\tGEP Affy GCvsM")
+        # ret.append(f'\tRNAseq GCvsN")
+        # ret.append(f'\tRNAseq GCvsM")
 
         for header in self.expression_list_headers:
             ret.append(header)
 
         ret.append(f'{self.type} Relative To Gene')
         ret.append(f'{self.type} TSS Closest Distance')
-        ret.append(f'{self.type} {pychipseq.headings.TSS_DISTANCE}')
-        ret.append(f'{self.type} {pychipseq.headings.CENTROMERE}')
+        ret.append(f'{self.type} {headings.TSS_DISTANCE}')
+        ret.append(f'{self.type} {headings.CENTROMERE}')
         ret.append('miR Symbol')
         ret.append('miREP Agilent GCvsN')
         ret.append('miREP Agilent GCvsM')
@@ -225,7 +224,7 @@ class GeneOrientatedPeaks(object):
         ret.append('Best Score (ChIPseeqer)')
         ret.append('{self.type} Count')
         ret.append('{self.type} Genomic Locations (hg19)')
-        
+
         return ret
 
     def get_ids(self):
@@ -243,10 +242,10 @@ class GeneOrientatedPeaks(object):
         ret.append(self.collapsed_entrezes[id])
         ret.append(self.collapsed_symbols[id])
 
-        #ret.append(f'\t{self.affy_gene_cb_vs_n_expression.get_expression(entrez))
-        #ret.append(f'\t{self.affy_gene_cb_vs_m_expression.get_expression(entrez))
-        #ret.append(f'\t{self.rna_gene_cb_vs_n_expression.get_expression(entrez))
-        #ret.append(f'\t{self.rna_gene_cb_vs_m_expression.get_expression(entrez))
+        # ret.append(f'\t{self.affy_gene_cb_vs_n_expression.get_expression(entrez))
+        # ret.append(f'\t{self.affy_gene_cb_vs_m_expression.get_expression(entrez))
+        # ret.append(f'\t{self.rna_gene_cb_vs_n_expression.get_expression(entrez))
+        # ret.append(f'\t{self.rna_gene_cb_vs_m_expression.get_expression(entrez))
 
         for expression in self.expression_list:
             ret.append(expression.get_expression(entrez))
@@ -255,7 +254,7 @@ class GeneOrientatedPeaks(object):
 
         # if there are some nearest tss, print the closest
         ret.append(
-            pychipseq.genomic.get_closest_tss(self.collapsed_tss[id]))
+            genomic.get_closest_tss(self.collapsed_tss[id]))
 
         ret.append(';'.join(self.collapsed_tss[id]))
 
@@ -263,20 +262,20 @@ class GeneOrientatedPeaks(object):
         ret.append(';'.join(self.collapsed_centromeres[id]))
 
         # no mir symbol
-        ret.append(pychipseq.text.NA)
+        ret.append(text.NA)
 
         # no agilent expression
-        ret.append(pychipseq.text.NA)
-        ret.append(pychipseq.text.NA)
+        ret.append(text.NA)
+        ret.append(text.NA)
 
         # no small rna
-        ret.append(pychipseq.text.NA)
-        ret.append(pychipseq.text.NA)
+        ret.append(text.NA)
+        ret.append(text.NA)
 
         # no peak relative to mir
-        ret.append(pychipseq.text.NA)
-        ret.append(pychipseq.text.NA)
-        ret.append(pychipseq.text.NA)
+        ret.append(text.NA)
+        ret.append(text.NA)
+        ret.append(text.NA)
 
         # pick the smallest p
         p = sorted(self.collapsed_p[id])
@@ -298,12 +297,12 @@ class GeneOrientatedPeaks(object):
     def mir_orient_peak(self, mir):
         ret = []
 
-        ret.append(pychipseq.text.NA)
+        ret.append(text.NA)
 
-        ret.extend([pychipseq.text.NA] * len(self.expression_list_headers))
+        ret.extend([text.NA] * len(self.expression_list_headers))
 
         # Fill in the gap
-        ret.extend([pychipseq.text.NA] * 5)
+        ret.extend([text.NA] * 5)
 
         ret.append(';'.join(self.collapsed_centromeres[mir]))
         ret.append(mir)
@@ -315,7 +314,7 @@ class GeneOrientatedPeaks(object):
         ret.append(self.solid_mir_cb_vs_n_expression.get_expression(mir))
         ret.append(';'.join(self.collapsed_types[mir]))
         ret.append(
-            pychipseq.genomic.get_closest_tss(self.collapsed_tss[mir]))
+            genomic.get_closest_tss(self.collapsed_tss[mir]))
         ret.append(';'.join(self.collapsed_tss[mir]))
 
         # pick the smallest p
@@ -364,41 +363,41 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
         header = f.readline().strip().split('\t')
 
         # independent columns
-        location_column = pychipseq.text.find_index(
-            header, pychipseq.headings.LOCATION)
-        p_column = pychipseq.text.find_index(
-            header, pychipseq.headings.P_VALUE)
-        score_column = pychipseq.text.find_index(
-            header, pychipseq.headings.SCORE)
-        centromere_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CENTROMERE)
+        location_column = text.find_index(
+            header, headings.LOCATION)
+        p_column = text.find_index(
+            header, headings.P_VALUE)
+        score_column = text.find_index(
+            header, headings.SCORE)
+        centromere_column = text.find_index(
+            header, headings.CENTROMERE)
 
-        entrez_column = pychipseq.text.find_index(
-            header, pychipseq.headings.ENTREZ_ID)
-        refseq_column = pychipseq.text.find_index(
-            header, pychipseq.headings.REFSEQ_ID)
-        symbol_column = pychipseq.text.find_index(
-            header, pychipseq.headings.GENE_SYMBOL)
-        type_column = pychipseq.text.find_index(
-            header, pychipseq.headings.RELATIVE)
-        tss_column = pychipseq.text.find_index(
-            header, pychipseq.headings.TSS_DISTANCE)
+        entrez_column = text.find_index(
+            header, headings.ENTREZ_ID)
+        refseq_column = text.find_index(
+            header, headings.REFSEQ_ID)
+        symbol_column = text.find_index(
+            header, headings.GENE_SYMBOL)
+        type_column = text.find_index(
+            header, headings.RELATIVE)
+        tss_column = text.find_index(
+            header, headings.TSS_DISTANCE)
 
-        closest_entrez_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CLOSEST_ENTREZ_ID)
-        closest_refseq_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CLOSEST_REFSEQ_ID)
-        closest_symbol_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CLOSEST_GENE_SYMBOL)
-        closest_type_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CLOSEST_RELATIVE)
-        closest_tss_column = pychipseq.text.find_index(
-            header, pychipseq.headings.CLOSEST_TSS_DISTANCE)
+        closest_entrez_column = text.find_index(
+            header, headings.CLOSEST_ENTREZ_ID)
+        closest_refseq_column = text.find_index(
+            header, headings.CLOSEST_REFSEQ_ID)
+        closest_symbol_column = text.find_index(
+            header, headings.CLOSEST_GENE_SYMBOL)
+        closest_type_column = text.find_index(
+            header, headings.CLOSEST_RELATIVE)
+        closest_tss_column = text.find_index(
+            header, headings.CLOSEST_TSS_DISTANCE)
 
-        mir_column = pychipseq.text.find_index(
-            header, pychipseq.headings.MIR_SYMBOL)
-        mir_type_column = pychipseq.text.find_index(header, 'Relative To miR')
-        mss_column = pychipseq.text.find_index(header, 'mIR Start Distance')
+        mir_column = text.find_index(
+            header, headings.MIR_SYMBOL)
+        mir_type_column = text.find_index(header, 'Relative To miR')
+        mss_column = text.find_index(header, 'mIR Start Distance')
 
         for line in f:
             ls = line.strip()
@@ -414,7 +413,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
 
             centromere = tokens[centromere_column]
 
-            if tokens[entrez_column] != pychipseq.text.NA:
+            if tokens[entrez_column] != text.NA:
                 # Preference is given to peaks within a gene
                 entrezes = tokens[entrez_column].split(';')
                 symbols = tokens[symbol_column].split(';')
@@ -436,7 +435,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
                 refseq = refseqs[i]
                 tss = tsses[i]
 
-                if refseq != pychipseq.text.NA:
+                if refseq != text.NA:
                     self.refseqs.add(refseq)
                     self.collapsed_entrezes[refseq] = entrez
                     self.collapsed_symbols[refseq] = symbol
@@ -449,7 +448,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
 
             mir = tokens[mir_column]
 
-            if mir != pychipseq.text.NA:
+            if mir != text.NA:
                 self.mirs.add(mir)
                 self.collapsed_types[mir].append(tokens[mir_type_column])
                 self.collapsed_p[mir].append(p)
@@ -461,7 +460,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
         f.close()
 
 
-class RefSeqGenes(pychipseq.genes.RefSeqGenes):
+class RefSeqGenes(genes.RefSeqGenes):
     def __init__(self):
         super().__init__(pychipseq.human.annotation.REFSEQ_FILE)
 
@@ -469,7 +468,7 @@ class RefSeqGenes(pychipseq.genes.RefSeqGenes):
 REFSEQ_GENES = RefSeqGenes()
 
 
-class AnnotatePeak(pychipseq.peaks.AnnotatePeak):
+class AnnotatePeak(peaks.AnnotatePeak):
     """
     Core annotation for annotating peaks/regions
     """
@@ -497,15 +496,15 @@ class AnnotatePeak(pychipseq.peaks.AnnotatePeak):
             REFSEQ_GENES, prom_ext_5p, prom_ext_3p))
 
         self.add_module(
-            pychipseq.peaks.NClosestGenes(REFSEQ_GENES, refseq_start, n=n_closest))
+            peaks.NClosestGenes(REFSEQ_GENES, refseq_start, n=n_closest))
 
-        self.add_module(pychipseq.human.mir.MirAnnotation(
+        self.add_module(hm.MirAnnotation(
             REFSEQ_GENES, prom_ext_5p, bin_size))
-        self.add_module(pychipseq.human.genomic.Repetitive())
-        self.add_module(pychipseq.human.genomic.SimpleTandemRepeats())
-        self.add_module(pychipseq.human.genomic.EncodeBlacklist())
-        self.add_module(pychipseq.human.genomic.GiuliaBlacklist())
-        self.add_module(pychipseq.human.tad.GencodeTADAnnotation())
-        self.add_module(pychipseq.tad.IsTADAnnotation())
-        self.add_module(pychipseq.tad.IsClosestTADAnnotation())
+        self.add_module(hg.Repetitive())
+        self.add_module(hg.SimpleTandemRepeats())
+        self.add_module(hg.EncodeBlacklist())
+        self.add_module(hg.GiuliaBlacklist())
+        self.add_module(ht.GencodeTADAnnotation())
+        self.add_module(tad.IsTADAnnotation())
+        self.add_module(tad.IsClosestTADAnnotation())
         self.add_module(pychipseq.human.tss.OverlapTss())

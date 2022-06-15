@@ -22,11 +22,11 @@ def annotate(file):
   
   #header
   sys.stdout.write("Genomic Location (hg19)")
-  sys.stdout.write("\tP-value (ChIPseeqer)");
-  #sys.stdout.write("\tMax Height (reads)");
-  sys.stdout.write("\tScore (ChIPseeqer)");
-  sys.stdout.write("\tPeak Width");
-  sys.stdout.write("\t");
+  sys.stdout.write("\tP-value (ChIPseeqer)")
+  #sys.stdout.write("\tMax Height (reads)")
+  sys.stdout.write("\tScore (ChIPseeqer)")
+  sys.stdout.write("\tPeak Width")
+  sys.stdout.write("\t")
   
   peak_annotation.print_header()
 

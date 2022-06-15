@@ -3,9 +3,9 @@ import collections
 import re
 import os.path
 
-import pychipseq.annotation
-import pychipseq.text
-import pychipseq.headings
+from . import annotation
+from . import text
+from . import headings
 
 
 def gene_exp(genes_file, up_gene_file, down_gene_file):
@@ -100,12 +100,12 @@ def load_mir_exp(file, genes_map, type):
         if len(tokens[0]) == 0 or re.match(r'n\/a', tokens[0]):
             continue
 
-        genes_map[pychipseq.annotation.get_mir_id(tokens[0])] = type
+        genes_map[annotation.get_mir_id(tokens[0])] = type
 
     f.close()
 
 
-class Expression(object):
+class Expression:
     """
     Maps symbols/ids to their expression type e.g. up or down regulated
     """
@@ -158,7 +158,7 @@ class RnaSeqExpression(Expression):
                       "no_exp")
 
 
-class GeneExpression(object):
+class GeneExpression:
     """
     Maps symbols/ids to their expression type e.g. up or down regulated
     using a table definition file. The file must contain a header and
@@ -184,13 +184,13 @@ class GeneExpression(object):
         return self.dir
 
 
-class MirExpression(object):
+class MirExpression:
     def __init__(self):
         self.expression_map = collections.defaultdict(str)
-        self.previous_ids = pychipseq.annotation.MirPreviousIds()
+        self.previous_ids = annotation.MirPreviousIds()
 
     def get_expression(self, id):
-        s = pychipseq.annotation.get_mir_id(id)
+        s = annotation.get_mir_id(id)
 
         if s in self.expression_map:
             return self.expression_map[s]
@@ -521,7 +521,7 @@ class AgilentMirCBvsNLog2Expression(MirExpression):
                      "up")
 
 
-class CustomExpression(object):
+class CustomExpression:
     """
     Add custom expression to a gene file.
     """
@@ -539,8 +539,8 @@ class CustomExpression(object):
 
         sys.stdout.write("\t".join(header) + "\n")
 
-        entrez_column = pychipseq.text.find_index(
-            header, pychipseq.headings.ENTREZ_ID)
+        entrez_column = text.find_index(
+            header, headings.ENTREZ_ID)
 
         for line in f:
             ls = line.strip()

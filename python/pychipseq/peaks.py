@@ -8,15 +8,15 @@ Created on Thu Sep 25 14:13:05 2014
 import sys
 import collections
 import re
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, Union
 import numpy as np
 import pandas as pd
 
-import pychipseq.text
-import pychipseq.genomic
-import pychipseq.headings
-import pychipseq.genes
-import pychipseq.tss
+from . import text
+from . import genomic
+from . import headings
+from . import genes
+from . import tss
 
 BIN_SIZE = 10000
 PEAKS_PER_GENE_HEADING = 'Peaks per gene'
@@ -124,11 +124,11 @@ def overlapping_peaks(files, ids):
         for line in f:
             tokens = line.strip().split('\t')
 
-            if pychipseq.genomic.is_location(tokens[0]):
-                location = pychipseq.genomic.parse_location(tokens[0])
+            if genomic.is_location(tokens[0]):
+                location = genomic.parse_location(tokens[0])
             else:
-                if pychipseq.genomic.is_chr(tokens[0]):
-                    location = pychipseq.genomic.Location(
+                if genomic.is_chr(tokens[0]):
+                    location = genomic.Location(
                         tokens[0], int(tokens[1]), int(tokens[2]))
                 else:
                     print(f'Invalid line: {line}', file=sys.stderr)
@@ -185,7 +185,7 @@ def overlapping_peak_tables(files, ids):
 
             tokens = line.split('\t')
 
-            location = pychipseq.genomic.parse_location(tokens[0])
+            location = genomic.parse_location(tokens[0])
 
             lid = f'{id}={location.chr}:{location.start}-{location.end}'
 
@@ -374,20 +374,20 @@ def duplicate_peaks(type, file):
 
     header = f.readline().strip().split('\t')
 
-    entrez_column = pychipseq.text.find_index(
-        header, pychipseq.headings.ENTREZ_ID)
-    refseq_column = pychipseq.text.find_index(
-        header, pychipseq.headings.REFSEQ_ID)
-    symbol_column = pychipseq.text.find_index(
-        header, pychipseq.headings.GENE_SYMBOL)
-    overlap_type_column = pychipseq.text.find_index(
+    entrez_column = text.find_index(
+        header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(
+        header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(
+        header, headings.GENE_SYMBOL)
+    overlap_type_column = text.find_index(
         header, 'Relative To Gene')
-    tss_column = pychipseq.text.find_index(header, 'TSS Distance')
+    tss_column = text.find_index(header, 'TSS Distance')
 
-    mir_column = pychipseq.text.find_index(header, 'miR Symbol')
-    mir_type_column = pychipseq.text.find_index(
+    mir_column = text.find_index(header, 'miR Symbol')
+    mir_type_column = text.find_index(
         header, 'Relative To miR')
-    mss_column = pychipseq.text.find_index(
+    mss_column = text.find_index(
         header, 'miR Start Distance')
 
     print('\t'.join(header))
@@ -411,7 +411,7 @@ def duplicate_peaks(type, file):
         for i in range(0, len(refseqs)):
             refseq = refseqs[i]
 
-            if refseq == pychipseq.text.NA:
+            if refseq == text.NA:
                 continue
 
             entrez = entrezes[i]
@@ -428,8 +428,8 @@ def duplicate_peaks(type, file):
             new_tokens[symbol_column] = symbol
             new_tokens[tss_column] = tss
 
-            new_tokens[mir_column] = pychipseq.text.NA
-            new_tokens[mir_type_column] = pychipseq.text.NA
+            new_tokens[mir_column] = text.NA
+            new_tokens[mir_type_column] = text.NA
 
             print('\t'.join(new_tokens))
 
@@ -445,7 +445,7 @@ def duplicate_peaks(type, file):
             for i in range(0, len(mirs)):
                 mir = mirs[i]
 
-                if mir == pychipseq.text.NA:
+                if mir == text.NA:
                     continue
 
                 mir_type = mir_types[i]
@@ -453,11 +453,11 @@ def duplicate_peaks(type, file):
 
                 new_tokens = tokens[:]
 
-                new_tokens[overlap_type_column] = pychipseq.text.NA
-                new_tokens[entrez_column] = pychipseq.text.NA
-                new_tokens[refseq_column] = pychipseq.text.NA
-                new_tokens[symbol_column] = pychipseq.text.NA
-                new_tokens[tss_column] = pychipseq.text.NA
+                new_tokens[overlap_type_column] = text.NA
+                new_tokens[entrez_column] = text.NA
+                new_tokens[refseq_column] = text.NA
+                new_tokens[symbol_column] = text.NA
+                new_tokens[tss_column] = text.NA
 
                 new_tokens[mir_column] = mir
                 new_tokens[mir_type_column] = mir_type
@@ -483,8 +483,8 @@ def filter_peaks(file, max_tss_5p_dist, max_tss_3p_dist):
 
     header = f.readline().strip().split('\t')
 
-    tss_column = pychipseq.text.find_index(
-        header, pychipseq.headings.TSS_DISTANCE)
+    tss_column = text.find_index(
+        header, headings.TSS_DISTANCE)
 
     print('\t'.join(header))
 
@@ -498,7 +498,7 @@ def filter_peaks(file, max_tss_5p_dist, max_tss_3p_dist):
 
         tss = tokens[tss_column]
 
-        if tss == pychipseq.text.NA:
+        if tss == text.NA:
             continue
 
         d = int(tss)
@@ -518,7 +518,7 @@ class NearestPeak:
 
     def __init__(self, file=None):
         self._peak_start_map = collections.defaultdict(
-            lambda: collections.defaultdict(pychipseq.genomic.Location))
+            lambda: collections.defaultdict(genomic.Location))
         self._starts = collections.defaultdict(list)
 
         if file is not None:
@@ -540,9 +540,9 @@ class NearestPeak:
 
             tokens = line.split('\t')
 
-            location = pychipseq.genomic.parse_location(tokens[0])
+            location = genomic.parse_location(tokens[0])
 
-            mid_point = pychipseq.genomic.mid_point(location)
+            mid_point = genomic.mid_point(location)
 
             self._peak_start_map[location.chr][mid_point] = location
 
@@ -568,8 +568,8 @@ class NearestPeak:
                 continue
 
             tokens = line.split('\t')
-            location = pychipseq.genomic.parse_location_cols(tokens)
-            mid_point = pychipseq.genomic.mid_point(location)
+            location = genomic.parse_location_cols(tokens)
+            mid_point = genomic.mid_point(location)
             self._peak_start_map[location.chr][mid_point] = location
 
         f.close()
@@ -579,13 +579,13 @@ class NearestPeak:
 
         print('Finished.', file=sys.stderr)
 
-    def get_nearest_peak(self, location: pychipseq.genomic.Location):
+    def get_nearest_peak(self, location: genomic.Location):
         chr = location.chr
 
         if len(self.starts[chr]) == 0:
             return None
 
-        mid_point = pychipseq.genomic.mid_point(location)
+        mid_point = genomic.mid_point(location)
 
         # use a binary style search to find closest peak
 
@@ -634,7 +634,7 @@ class NearestPeak:
         if len(self._starts[chr]) == 0:
             return sys.maxint
 
-        mid_point = pychipseq.genomic.mid_point(location)
+        mid_point = genomic.mid_point(location)
 
         # use a binary style search to find closest peak
 
@@ -671,15 +671,15 @@ class NearestPeak:
             return ed
 
 
-class NClosestGenes(pychipseq.genomic.Annotation):
+class NClosestGenes(genomic.Annotation):
     """
     Find the n closest (usually 5) closest genes to a location
     and add annotation columns
     """
 
     def __init__(self,
-                 refseq_genes: pychipseq.tss.RefSeqAnnotation,
-                 refseq_start: pychipseq.tss.RefSeqTss,
+                 refseq_genes: tss.RefSeqAnnotation,
+                 refseq_start: tss.RefSeqTss,
                  n: int = 5):
         self._refseq_genes = refseq_genes
         self._refseq_start = refseq_start
@@ -687,16 +687,16 @@ class NClosestGenes(pychipseq.genomic.Annotation):
         self._ncols = n * 4
         self._header = []
         for i in range(1, self._n + 1):
-            self._header.append(f'#{i} Closest {pychipseq.headings.REFSEQ_ID}')
-            self._header.append(f'#{i} Closest {pychipseq.headings.ENTREZ_ID}')
+            self._header.append(f'#{i} Closest {headings.REFSEQ_ID}')
+            self._header.append(f'#{i} Closest {headings.ENTREZ_ID}')
             self._header.append(
-                f'#{i} Closest {pychipseq.headings.GENE_SYMBOL}')
+                f'#{i} Closest {headings.GENE_SYMBOL}')
             self._header.append(f'#{i} TSS Closest Distance')
 
     def get_names(self):
         return self._header
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Any]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
         # find a large panel of closest genes so we can hopefully find
         # n unique genes within this
         tss_genes = self._refseq_start.get_n_closest_genes(location, n=50)
@@ -725,9 +725,9 @@ class NClosestGenes(pychipseq.genomic.Annotation):
             # keep track of how many unique genes we've found
 
             if isinstance(row_map, dict):
-                row_map[f'#{n} Closest {pychipseq.headings.REFSEQ_ID}'] = gene_annotation.refseq
-                row_map[f'#{n} Closest {pychipseq.headings.ENTREZ_ID}'] = gene_annotation.entrez
-                row_map[f'#{n} {pychipseq.headings.CLOSEST_GENE_SYMBOL}'] = gene_annotation.symbol
+                row_map[f'#{n} Closest {headings.REFSEQ_ID}'] = gene_annotation.refseq
+                row_map[f'#{n} Closest {headings.ENTREZ_ID}'] = gene_annotation.entrez
+                row_map[f'#{n} {headings.CLOSEST_GENE_SYMBOL}'] = gene_annotation.symbol
                 row_map[f'#{n} TSS Closest Distance'] = tss_gene.d
 
             if n == self._n:
@@ -736,39 +736,39 @@ class NClosestGenes(pychipseq.genomic.Annotation):
             n += 1
 
         while len(ret) < self._ncols:
-            ret.append(pychipseq.text.NA)
+            ret.append(text.NA)
 
         #print(ret, len(ret), len(self._header))
         return ret
 
 
-class ClosestGene(pychipseq.genomic.Annotation):
+class ClosestGene(genomic.Annotation):
     """
     Closest gene to a location
     """
 
     def __init__(self,
                  promoter_type: str,
-                 refseq_genes: pychipseq.tss.RefSeqAnnotation,
-                 refseq_tss: pychipseq.tss.RefSeqTss):
+                 refseq_genes: tss.RefSeqAnnotation,
+                 refseq_tss: tss.RefSeqTss):
         self._promoter_type = promoter_type
-        self._refseq_genes: pychipseq.tss.RefSeqAnnotation = refseq_genes
-        self._refseq_tss: pychipseq.tss.RefSeqTss = refseq_tss
+        self._refseq_genes: tss.RefSeqAnnotation = refseq_genes
+        self._refseq_tss: tss.RefSeqTss = refseq_tss
 
     def get_names(self):
         ret = []
-        ret.append(f'Closest {pychipseq.headings.REFSEQ_ID}')
-        ret.append(f'Closest {pychipseq.headings.ENTREZ_ID}')
-        ret.append(pychipseq.headings.CLOSEST_GENE_SYMBOL)
+        ret.append(f'Closest {headings.REFSEQ_ID}')
+        ret.append(f'Closest {headings.ENTREZ_ID}')
+        ret.append(headings.CLOSEST_GENE_SYMBOL)
         ret.append(
             f'Relative To Closest Gene {self._promoter_type}')
         ret.append(f'TSS Closest Distance')
         return ret
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Any]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
         # find a large panel of closest genes so we can hopefully find
         # n unique genes within this
-        ret: List[str] = []
+        ret: list[str] = []
 
         tss_gene = self._refseq_tss.get_closest_gene(location)
 
@@ -780,9 +780,9 @@ class ClosestGene(pychipseq.genomic.Annotation):
         ret.append(reversed(sorted(tss_gene.types)))
         ret.append(str(tss_gene.d))
 
-        row_map[f'Closest {pychipseq.headings.REFSEQ_ID}'] = gene_annotation.refseq
-        row_map[f'Closest {pychipseq.headings.ENTREZ_ID}'] = gene_annotation.entrez
-        row_map[pychipseq.headings.CLOSEST_GENE_SYMBOL] = gene_annotation.symbol
+        row_map[f'Closest {headings.REFSEQ_ID}'] = gene_annotation.refseq
+        row_map[f'Closest {headings.ENTREZ_ID}'] = gene_annotation.entrez
+        row_map[headings.CLOSEST_GENE_SYMBOL] = gene_annotation.symbol
         row_map[f'Relative To Closest Gene {self._promoter_type}'] = reversed(
             sorted(tss_gene.types))
         row_map[f'TSS Closest Distance'] = tss_gene.d
@@ -790,31 +790,31 @@ class ClosestGene(pychipseq.genomic.Annotation):
         return ret
 
 
-class AnnotateGene(pychipseq.genomic.Annotation):
+class AnnotateGene(genomic.Annotation):
     """
     Basic gene info
     """
 
     def __init__(self,
                  promoter_type: str,
-                 refseq_annotation: pychipseq.tss.RefSeqAnnotation,
-                 refseq_genes: pychipseq.genes.RefSeqGenes):
+                 refseq_annotation: tss.RefSeqAnnotation,
+                 refseq_genes: genes.RefSeqGenes):
         self._promoter_type = promoter_type
         self._refseq_annotation = refseq_annotation
         self._refseq_genes = refseq_genes
 
         self._header = []
-        self._header.append(pychipseq.headings.REFSEQ_ID)
-        self._header.append(pychipseq.headings.ENTREZ_ID)
-        self._header.append(pychipseq.headings.GENE_SYMBOL)
+        self._header.append(headings.REFSEQ_ID)
+        self._header.append(headings.ENTREZ_ID)
+        self._header.append(headings.GENE_SYMBOL)
         self._header.append(f'Relative To Gene {self._promoter_type}')
-        self._header.append(pychipseq.headings.TSS_DISTANCE)
-        self._empty_row = [pychipseq.text.NA] * 5
+        self._header.append(headings.TSS_DISTANCE)
+        self._empty_row = [text.NA] * 5
 
     def get_names(self):
         return self._header
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Any]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
         genes = self._refseq_annotation.annotate_location(location)
         row_map['genes'] = genes
 
@@ -852,10 +852,10 @@ class AnnotateGene(pychipseq.genomic.Annotation):
             row.append(';'.join(symbols))
             row.append(';'.join(types))
             row.append(';'.join(tss_list))
-            row_map[pychipseq.headings.GENE_SYMBOL] = ';'.join(symbols)
+            row_map[headings.GENE_SYMBOL] = ';'.join(symbols)
         else:
             row.extend(self._empty_row)
-            row_map[pychipseq.headings.GENE_SYMBOL] = pychipseq.text.NA
+            row_map[headings.GENE_SYMBOL] = text.NA
 
         return row
 
@@ -867,12 +867,12 @@ class AnnotatePeak:
 
     def __init__(self,
                  type: str,
-                 refseq_annotation: pychipseq.tss.RefSeqAnnotation,
-                 refseq_genes: pychipseq.genes.RefSeqGenes,
+                 refseq_annotation: tss.RefSeqAnnotation,
+                 refseq_genes: genes.RefSeqGenes,
                  prom_ext_5p: int = 5000,
                  prom_ext_3p: int = 4000):
 
-        self._header: List[str] = []
+        self._header: list[str] = []
 
         self._type = type
         #self.prom_ext_5p = prom_ext_5p
@@ -891,7 +891,7 @@ class AnnotatePeak:
         #self._refseq_end = refseq_end
 
         # For annotating if in centromere or not
-        #self.repetitive = pychipseq.genomic.Repetitive()
+        #self.repetitive = genomic.Repetitive()
 
         #
         # Create a mir database
@@ -906,8 +906,8 @@ class AnnotatePeak:
         # to update them
         #
 
-        self._annotation_modules: List[pychipseq.genomic.Annotation] = []
-        self._table_annotation_modules: List[TableAnnotation] = []
+        self._annotation_modules: list[genomic.Annotation] = []
+        self._table_annotation_modules: list[TableAnnotation] = []
 
         self._annotation_modules.append(AnnotateGene(
             self._promoter_type, refseq_annotation, refseq_genes))
@@ -929,34 +929,34 @@ class AnnotatePeak:
         # only happens once
         self._update_header = True
 
-    def add_module(self, module: pychipseq.genomic.Annotation):
+    def add_module(self, module: genomic.Annotation):
         self._annotation_modules.append(module)
 
-    def print_header(self) -> List[str]:
+    def print_header(self) -> list[str]:
         ret = self._header
         sys.stdout.write('\t'.join(ret))
         return ret
 
     @property
-    def header(self) -> List[str]:
+    def header(self) -> list[str]:
         if len(self._header) == 0:
             self._header.append(LOCATION_HEADING)
             self._header.append(PVALUE_HEADING)
             self._header.append(SCORE_HEADING)
             self._header.append(WIDTH_HEADING)
 
-            # self._header.append(pychipseq.headings.REFSEQ_ID)
-            # self._header.append(pychipseq.headings.ENTREZ_ID)
-            # self._header.append(pychipseq.headings.GENE_SYMBOL)
+            # self._header.append(headings.REFSEQ_ID)
+            # self._header.append(headings.ENTREZ_ID)
+            # self._header.append(headings.GENE_SYMBOL)
             # self._header.append(f'{self._type} Relative To Gene {self._promoter_type}')
-            # self._header.append(f'{self._type} {pychipseq.headings.TSS_DISTANCE}')
+            # self._header.append(f'{self._type} {headings.TSS_DISTANCE}')
 
             #
             # Closest
             #
-            # self._header.append(f'Closest {pychipseq.headings.REFSEQ_ID}')
-            # self._header.append(f'Closest {pychipseq.headings.ENTREZ_ID}')
-            # self._header.append(pychipseq.headings.CLOSEST_GENE_SYMBOL)
+            # self._header.append(f'Closest {headings.REFSEQ_ID}')
+            # self._header.append(f'Closest {headings.ENTREZ_ID}')
+            # self._header.append(headings.CLOSEST_GENE_SYMBOL)
             # self._header.append(
             #     f'{self._type} Relative To Closest Gene {self._promoter_type}')
             # self._header.append(f'{self._type} TSS Closest Distance')
@@ -965,9 +965,9 @@ class AnnotatePeak:
             # Closest End
             #
 
-            # self._header.append(f'Closest End {pychipseq.headings.REFSEQ_ID}')
-            # self._header.append(f'Closest End {pychipseq.headings.ENTREZ_ID}')
-            # self._header.append(f'Closest End {pychipseq.headings.GENE_SYMBOL}')
+            # self._header.append(f'Closest End {headings.REFSEQ_ID}')
+            # self._header.append(f'Closest End {headings.ENTREZ_ID}')
+            # self._header.append(f'Closest End {headings.GENE_SYMBOL}')
             # self._header.append(
             #     f'{self._type} Relative To Closest Gene End {self._promoter_type}')
             # self._header.append(f'{self._type} End Closest Distance')
@@ -997,9 +997,9 @@ class AnnotatePeak:
         #
 
         # for i in range(1, 6):
-        #     ret.append(f'#{i} Closest {pychipseq.headings.REFSEQ_ID}')
-        #     ret.append(f'#{i} Closest {pychipseq.headings.ENTREZ_ID}')
-        #     ret.append(f'#{i} Closest {pychipseq.headings.GENE_SYMBOL}')
+        #     ret.append(f'#{i} Closest {headings.REFSEQ_ID}')
+        #     ret.append(f'#{i} Closest {headings.ENTREZ_ID}')
+        #     ret.append(f'#{i} Closest {headings.GENE_SYMBOL}')
         #     ret.append(f'#{i} TSS Closest Distance')
 
         # End the header
@@ -1025,22 +1025,22 @@ class AnnotatePeak:
                         [LOCATION_HEADING, PVALUE_HEADING, SCORE_HEADING, WIDTH_HEADING])
             else:
                 self._header.extend(ext_header)
-                self._header.append(LOCATION_HEADING)
+                #self._header.append(LOCATION_HEADING)
 
         
 
-        # self._header.append(pychipseq.headings.REFSEQ_ID)
-        # self._header.append(pychipseq.headings.ENTREZ_ID)
-        # self._header.append(pychipseq.headings.GENE_SYMBOL)
+        # self._header.append(headings.REFSEQ_ID)
+        # self._header.append(headings.ENTREZ_ID)
+        # self._header.append(headings.GENE_SYMBOL)
         # self._header.append(f'Relative To Gene {self._promoter_type}')
-        # self._header.append(f'{pychipseq.headings.TSS_DISTANCE}')
+        # self._header.append(f'{headings.TSS_DISTANCE}')
 
         #
         # Closest
         #
-        # self._header.append(f'Closest {pychipseq.headings.REFSEQ_ID}')
-        # self._header.append(f'Closest {pychipseq.headings.ENTREZ_ID}')
-        # self._header.append(pychipseq.headings.CLOSEST_GENE_SYMBOL)
+        # self._header.append(f'Closest {headings.REFSEQ_ID}')
+        # self._header.append(f'Closest {headings.ENTREZ_ID}')
+        # self._header.append(headings.CLOSEST_GENE_SYMBOL)
         # self._header.append(
         #     f'{self._type} Relative To Closest Gene {self._promoter_type}')
         # self._header.append(f'{self._type} TSS Closest Distance')
@@ -1049,9 +1049,9 @@ class AnnotatePeak:
         # Closest End
         #
 
-        # self._header.append(f'Closest End {pychipseq.headings.REFSEQ_ID}')
-        # self._header.append(f'Closest End {pychipseq.headings.ENTREZ_ID}')
-        # self._header.append(f'Closest End {pychipseq.headings.GENE_SYMBOL}')
+        # self._header.append(f'Closest End {headings.REFSEQ_ID}')
+        # self._header.append(f'Closest End {headings.ENTREZ_ID}')
+        # self._header.append(f'Closest End {headings.GENE_SYMBOL}')
         # self._header.append(
         #     f'{self._type} Relative To Closest Gene End {self._promoter_type}')
         # self._header.append(f'{self._type} End Closest Distance')
@@ -1084,12 +1084,12 @@ class AnnotatePeak:
         for line in f:
             tokens = line.strip().split('\t')
 
-            first_col_is_loc = pychipseq.genomic.is_location(tokens[0])
+            first_col_is_loc = genomic.is_location(tokens[0])
 
             if first_col_is_loc:
-                location = pychipseq.genomic.parse_location(tokens[0])
+                location = genomic.parse_location(tokens[0])
             else:
-                location = pychipseq.genomic.Location(
+                location = genomic.Location(
                     tokens[0], int(tokens[1]), int(tokens[2]))
 
             #chr = tokens[0]
@@ -1101,7 +1101,7 @@ class AnnotatePeak:
             locations.append(location)
 
             # supply already calculated items to each module
-            row_map = {LOCATION_HEADING: location, 'type': self._type}
+            row_map = {LOCATION_HEADING:location, 'type':self._type}
 
             #start = int(tokens[1])
             #end = int(tokens[2])
@@ -1123,7 +1123,7 @@ class AnnotatePeak:
                 row_map[WIDTH_HEADING] = width
             else:
                 annotation = tokens[0:len(ext_header)]
-                annotation.append(location)
+                #annotation.append(location)
 
                 # Use the columns as they are in the file
                 for i in range(0, len(ext_header)):
@@ -1159,7 +1159,7 @@ class AnnotatePeak:
         return df
 
     def annotate(self, location, row_map: Mapping[str, Any]):
-        row: List[Union[str, int, float]] = []
+        row: list[Union[str, int, float]] = []
 
         # genes = self._refseq_annotation.annotate_location(location)
         # row_map['genes'] = genes
@@ -1197,11 +1197,11 @@ class AnnotatePeak:
         #     row.append(';'.join(types))
         #     row.append(';'.join(tss_list))
 
-        #     row_map[pychipseq.headings.GENE_SYMBOL] = ';'.join(symbols)
+        #     row_map[headings.GENE_SYMBOL] = ';'.join(symbols)
         # else:
-        #     row.extend([pychipseq.text.NA] * 5)
+        #     row.extend([text.NA] * 5)
 
-        #     row_map[pychipseq.headings.GENE_SYMBOL] = pychipseq.text.NA
+        #     row_map[headings.GENE_SYMBOL] = text.NA
 
         #
         # Look at which gene TSS is closest
@@ -1220,7 +1220,7 @@ class AnnotatePeak:
         # row.append(gene_annotation.symbol)
         # row.append(','.join(reversed(sorted(tss_gene.types))))
         # row.append(str(tss_gene.d))
-        #row_map[pychipseq.headings.CLOSEST_GENE_SYMBOL] = gene_annotation.symbol
+        #row_map[headings.CLOSEST_GENE_SYMBOL] = gene_annotation.symbol
 
         #
         # Look at which gene end is closest
@@ -1284,13 +1284,13 @@ class AnnotatePeak:
 
         #     symbol = gene_annotation.symbol
 
-        #     if symbol == pychipseq.text.NA:
+        #     if symbol == text.NA:
         #         symbol = 'gene'
 
         #     for mir in sorted(transcript_mirs):
         #         mirs.append(mir)
         #         mir_types.append(symbol + '_promoter')
-        #         mss_list.append(pychipseq.text.NA)
+        #         mss_list.append(text.NA)
 
         # # Standard mir annotation
 
@@ -1300,17 +1300,17 @@ class AnnotatePeak:
         #     mss_list.append(mss[mir])
 
         # if len(mirs) > 0:
-        #     closest_mss = pychipseq.genomic.get_closest_tss(mss_list)
+        #     closest_mss = genomic.get_closest_tss(mss_list)
 
         #     row.append(';'.join(mirs))
         #     row.append(';'.join(mir_types))
         #     row.append(closest_mss)
         #     row.append(';'.join(mss_list))
         # else:
-        #     row.append(pychipseq.text.NA)
-        #     row.append(pychipseq.text.NA)
-        #     row.append(pychipseq.text.NA)
-        #     row.append(pychipseq.text.NA)
+        #     row.append(text.NA)
+        #     row.append(text.NA)
+        #     row.append(text.NA)
+        #     row.append(text.NA)
 
         #
         # Modules
@@ -1358,14 +1358,14 @@ class AnnotatePeak:
         #     if n == 5:
         #         break
 
-        # ret.extend([pychipseq.text.NA] * 4 * (5 - n))
+        # ret.extend([text.NA] * 4 * (5 - n))
 
         # Finish the annotation
         return row
 
 
 class TableAnnotation:
-    def annotate(self, header: List[str], annotations: List[List[str]]) -> List[List[str]]:
+    def annotate(self, header: list[str], annotations: list[list[str]]) -> list[list[str]]:
         """
         Should return the name of the column or an array of columns
         """
@@ -1377,11 +1377,11 @@ class PeaksPerGeneAnnotation(TableAnnotation):
     Flag when a gene has more than 3 peaks
     """
 
-    def annotate(self, header: List[str], df: pd.DataFrame) -> pd.DataFrame:
+    def annotate(self, header: list[str], df: pd.DataFrame) -> pd.DataFrame:
         header = np.array(header)
 
-        loc_col = pychipseq.text.find_index(header, LOCATION_HEADING)
-        gene_col = pychipseq.text.find_index(header, pychipseq.headings.GENE_SYMBOL) # np.where(header == pychipseq.headings.GENE_SYMBOL)[0][0]
+        loc_col = text.find_index(header, LOCATION_HEADING)
+        gene_col = text.find_index(header, headings.GENE_SYMBOL) # np.where(header == headings.GENE_SYMBOL)[0][0]
 
         peaks_genes = collections.defaultdict(set)
         genes_peaks = collections.defaultdict(set)
@@ -1391,7 +1391,7 @@ class PeaksPerGeneAnnotation(TableAnnotation):
             genes = df.iloc[i, gene_col].split(';')
 
             for gene in genes:
-                if gene != pychipseq.text.NA:
+                if gene != text.NA:
                     peaks_genes[loc].add(gene)
                     genes_peaks[gene].add(loc)
         

@@ -20,7 +20,7 @@ import pychipseq.human.peaks
 
 
 parser = argparse.ArgumentParser(prog='annotate_chipseeqer_peaks.py')
-parser.add_argument('-m', '--matches', nargs=1)
+parser.add_argument('-m', '--matches', nargs=1, default=[''])
 parser.add_argument('-g', '--genome', nargs=1, default=['hg19'])
 parser.add_argument('--prom5', nargs=1, default=[2000])
 parser.add_argument('--prom3', nargs=1, default=[1000])
@@ -54,7 +54,7 @@ for (dir, dirs, files) in os.walk('.'):
     found = False
 
     for m in matches:
-        if m in dir:
+        if '' in m or m in dir:
             found = True
             break
 
