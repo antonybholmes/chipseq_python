@@ -1,22 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Sep    8 15:12:34 2014
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with 
+this program. If not, see <https://www.gnu.org/licenses/>. 
 
-@author: Antony Holmes
+Copyright (C) 2022 Antony Holmes.
 """
 
 import sys
 import collections
 import re
 
-import pychipseq.annotation
-import pychipseq.expression
-
-import pychipseq.genomic
-import pychipseq.human.genomic
-import pychipseq.headings
-import pychipseq.text
-import pychipseq.sample
+from . import genomic
+from . import headings
+from . import text
 
 GENE_ID = 'gene_id'
 GENE_SYMBOL = 'gene_symbol'
@@ -38,7 +41,7 @@ def parse_rdf_gene_variant_id(text):
 
 
 def create_variant(id, chr, start, end):
-    return f'{id}#{pychipseq.genomic.location_string(chr, start, end)}'
+    return f'{id}#{genomic.location_string(chr, start, end)}'
 
 
 def parse_location_from_variant(location):
@@ -48,7 +51,7 @@ def parse_location_from_variant(location):
     start = int(matcher.group(2))
     end = int(matcher.group(3))
 
-    location = pychipseq.genomic.Location(chr, start, end)
+    location = genomic.Location(chr, start, end)
 
     return location
 
@@ -65,10 +68,10 @@ def find_best_p_value(header, tokens):
 
     min_p = 1
 
-    indices = pychipseq.text.find_indices(header, pychipseq.headings.P_VALUE)
+    indices = text.find_indices(header, headings.P_VALUE)
 
     for i in indices:
-        if tokens[i] != pychipseq.text.NA:
+        if tokens[i] != text.NA:
             p = float(tokens[i])
 
             if p < min_p:
@@ -83,10 +86,10 @@ def find_best_score(header, tokens):
 
     max_score = 0
 
-    indices = pychipseq.text.find_indices(header, pychipseq.headings.SCORE)
+    indices = text.find_indices(header, headings.SCORE)
 
     for i in indices:
-        if tokens[i] != pychipseq.text.NA:
+        if tokens[i] != text.NA:
             s = float(tokens[i])
 
             if s > max_score:
@@ -95,7 +98,7 @@ def find_best_score(header, tokens):
     return max_score
 
 
-class Gene(pychipseq.genomic.Location):
+class Gene(genomic.Location):
     def __init__(self, id, symbol, strand, chr, start, end):
         super().__init__(chr, start, end)
         self._strand = strand
@@ -112,7 +115,7 @@ class Gene(pychipseq.genomic.Location):
         Returns:
             Named argument.
         """
-        return self._id_map.get(name, pychipseq.text.NA)
+        return self._id_map.get(name, text.NA)
 
     @property
     def id(self):
@@ -157,7 +160,7 @@ class RefSeqGenes:
 
         print(f'Loading genes from {file}...', file=sys.stderr)
 
-        # pychipseq.annotation.REFSEQ_FILE
+        # annotation.REFSEQ_FILE
         f = open(file, 'r')
 
         # skip header

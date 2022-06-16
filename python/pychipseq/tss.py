@@ -10,12 +10,13 @@ Created on Mon Aug 25 17:25:56 2014
 import collections
 import sys
 import re
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, Mapping, Optional, Union
 import numpy as np
 
 from . import genomic
-import pychipseq.annotation
-import pychipseq.genes
+from . import genes
+from . import headings
+from . import text
 
 
 class TssGene:
@@ -52,7 +53,7 @@ class RefSeqTssClassification:
         self._promoter_label = 'promoter'
 
         print(
-            f'RefSeqTssClassification: Loading from {file}...', file=sys.stderr)
+            f'RefSeqTssClassification: Loadings from {file}...', file=sys.stderr)
 
         f = open(file, 'r')
 
@@ -99,7 +100,7 @@ class RefSeqTssClassification:
                 promoter_start = end - prom_ext_3p
                 promoter_end = end + prom_ext_5p
 
-            variant_id = pychipseq.genes.create_variant(
+            variant_id = genes.create_variant(
                 refseq, chr, start, end)
 
             self._variants[refseq].add(variant_id)
@@ -120,8 +121,8 @@ class RefSeqTssClassification:
 
         print('Finished.', file=sys.stderr)
 
-    def get_classification(self, variant_id, mid_point):
-        refseq = pychipseq.genes.parse_id_from_variant(variant_id)
+    def classify(self, variant_id, mid_point):
+        refseq = genes.parse_id_from_variant(variant_id)
 
         types = set()
 
@@ -206,20 +207,37 @@ class RefSeqTssClassification:
         return gene
 
 
+class RefSeqTssClassificationFactory:
+    _classifiers = collections.defaultdict(
+        lambda: collections.defaultdict(lambda: {}))
+
+    @staticmethod
+    def getInstance(file: str, prom_ext_5p: int, prom_ext_3p: int):
+        if prom_ext_3p not in RefSeqTssClassificationFactory._classifiers[file][prom_ext_5p]:
+            RefSeqTssClassificationFactory._classifiers[file][prom_ext_5p][prom_ext_3p] = RefSeqTssClassification(
+                file, prom_ext_5p, prom_ext_3p)
+
+        return RefSeqTssClassificationFactory._classifiers[file][prom_ext_5p][prom_ext_3p]
+
+    def __init__(self):  # , prom_ext_5p, prom_ext_3p):
+        # super().__init__(annotation.REFSEQ_FILE, prom_ext_5p, prom_ext_3p)
+        raise Exception("Call RefSeqTssClassificationFactory.getInstance()")
+
+
 class RefSeqAnnotation:
     """
     Annotate peaks for all possible refseq genes they might overlap.
     """
 
-    def __init__(self, file, prom_ext_5p, prom_ext_3p, bin_size):
+    def __init__(self, file: str, prom_ext_5p: int = 2000, prom_ext_3p: int = 1000, bin_size: int = 1000):
         """
-        Create a new pychipseq.annotation object.
+        Create a new annotation object.
 
-        @param prom_ext_5p   How far upstream should be considered 
-                             a promoter.
-        @param prom_ext_3p   How far downstream should be considered 
-                             a promoter.
-        @param bin_size      The size of the bins to group genes into.
+        Args:
+            file (str): _description_
+            prom_ext_5p (int, optional): How far upstream should be considered a promoter. Defaults to 2000.
+            prom_ext_3p (int, optional): How far downstream should be considered a promoter. Defaults to 1000.
+            bin_size (int, optional): The size of the bins to group genes into. Defaults to 1000.
         """
 
         self._bin_size = bin_size
@@ -241,9 +259,12 @@ class RefSeqAnnotation:
             lambda: collections.defaultdict(lambda: collections.defaultdict(list)))
         self._exon_ends = collections.defaultdict(
             lambda: collections.defaultdict(lambda: collections.defaultdict(list)))
-        self._refseq = RefSeqTssClassification(file, prom_ext_5p, prom_ext_3p)
+        self._refseq_class = RefSeqTssClassificationFactory.getInstance(
+            file, prom_ext_5p, prom_ext_3p)
 
         print(f'RefSeqAnnotation: Loading from {file}...', file=sys.stderr)
+
+        self._version = re.search(r'v([A-Za-z0-9]+)', file).group(1)
 
         f = open(file, 'r')
 
@@ -293,7 +314,7 @@ class RefSeqAnnotation:
             start_bin = int((start - max_offset) / bin_size)
             end_bin = int((end + max_offset) / bin_size)
 
-            variant_id = pychipseq.genes.create_variant(
+            variant_id = genes.create_variant(
                 refseq, chr, start, end)
 
             for bin in range(start_bin, end_bin + 1):
@@ -316,6 +337,10 @@ class RefSeqAnnotation:
 
         print('Finished.', file=sys.stderr)
 
+    @property
+    def version(self):
+        return self._version
+
     def annotate_location(self, location):
         if not location.chr in self._gene_start_map:
             return []
@@ -335,7 +360,7 @@ class RefSeqAnnotation:
                 continue
 
             for variant_id in self._gene_start_map[location.chr][bin]:
-                refseq = pychipseq.genes.parse_id_from_variant(variant_id)
+                refseq = genes.parse_id_from_variant(variant_id)
 
                 entrez = self.entrezes[refseq]
 
@@ -380,14 +405,30 @@ class RefSeqAnnotation:
 
         # Now classify each separate closest variant (which must all have a different entrez id)
 
-        genes = []
+        ret = []
 
         for entrez in sorted(closest_variants):
             variant_id = closest_variants[entrez]
-            gene = self._refseq.get_classification(variant_id, mid_point)
-            genes.append(gene)
+            gene = self._refseq_class.classify(variant_id, mid_point)
+            ret.append(gene)
 
-        return genes
+        return ret
+
+
+class RefSeqAnnotationFactory:
+    _classifiers = collections.defaultdict(
+        lambda: collections.defaultdict(lambda: collections.defaultdict(lambda: {})))
+
+    @staticmethod
+    def getInstance(file: str, prom_ext_5p: int = 2000, prom_ext_3p: int = 1000, bin_size: int = 1000):
+        if bin_size not in RefSeqAnnotationFactory._classifiers[file][prom_ext_5p][prom_ext_3p]:
+            RefSeqAnnotationFactory._classifiers[file][prom_ext_5p][prom_ext_3p][bin_size] = RefSeqAnnotation(
+                file, prom_ext_5p, prom_ext_3p, bin_size)
+
+        return RefSeqAnnotationFactory._classifiers[file][prom_ext_5p][prom_ext_3p][bin_size]
+
+    def __init__(self):
+        raise Exception("Call RefSeqAnnotationFactory.getInstance()")
 
 
 class RefSeqTss(genomic.Annotation):
@@ -395,7 +436,7 @@ class RefSeqTss(genomic.Annotation):
     Determines the closest gene(s) to a given position.
     """
 
-    def __init__(self, file: str, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int, bin_size: Optional[int] = 1000):
+    def __init__(self, file: str, refseq_genes: genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int, bin_size: Optional[int] = 1000):
         self._refseq_genes = refseq_genes
         self._gene_start_map = collections.defaultdict(
             lambda: collections.defaultdict(set))
@@ -405,7 +446,8 @@ class RefSeqTss(genomic.Annotation):
         self._bin_size = bin_size
         self._bins = collections.defaultdict(
             lambda: collections.defaultdict(list))
-        self._refseq = RefSeqTssClassification(file, prom_ext_5p, prom_ext_3p)
+        self._refseq = RefSeqTssClassificationFactory.getInstance(
+            file, prom_ext_5p, prom_ext_3p)
         self._promoter_type = f'(prom=-{prom_ext_5p / 1000}/+{prom_ext_3p / 1000}kb)'
         self._header = []
 
@@ -502,10 +544,10 @@ class RefSeqTss(genomic.Annotation):
     def get_annotation(self, chr, mid_point, start) -> TssGene:
         # Pick the first one we find
         variant_id = sorted(self._gene_start_map[chr][start])[0]
-        gene = self._refseq.get_classification(variant_id, mid_point)
+        gene = self._refseq.classify(variant_id, mid_point)
         return gene
 
-    def get_n_closest_genes(self, location: genomic.Location, n: int = 5) -> List[TssGene]:
+    def get_n_closest_genes(self, location: genomic.Location, n: int = 5) -> list[TssGene]:
         """
         Find the n closest genes to a location.
 
@@ -545,8 +587,7 @@ class RefSeqTss(genomic.Annotation):
 
         mid_point = genomic.mid_point(location)
 
-        genes = [self._refseq.get_classification(
-            v, mid_point) for v in variants]
+        genes = [self._refseq.classify(v, mid_point) for v in variants]
 
         gene_dist_map = collections.defaultdict(list)
 
@@ -569,7 +610,7 @@ class RefSeqStart(RefSeqTss):
     Determines the closest gene(s) to a given position by TSS.
     """
 
-    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
+    def __init__(self, file, refseq_genes: genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
         super().__init__(file, refseq_genes, prom_ext_5p, prom_ext_3p)
 
         print(f'RefSeqStart: Loading from {file}...', file=sys.stderr)
@@ -614,7 +655,7 @@ class RefSeqStart(RefSeqTss):
             # If the gene is on the negative strand, the promoter is around the
             # end coordinate on the forward strand
 
-            variant_id = pychipseq.genes.create_variant(
+            variant_id = genes.create_variant(
                 refseq, chr, start, end)
 
             if strand == "+":
@@ -641,9 +682,9 @@ class RefSeqStart(RefSeqTss):
 
         print('Finished.', file=sys.stderr)
 
-        self._header.append(f'Closest {pychipseq.headings.REFSEQ_ID}')
-        self._header.append(f'Closest {pychipseq.headings.ENTREZ_ID}')
-        self._header.append(pychipseq.headings.CLOSEST_GENE_SYMBOL)
+        self._header.append(f'Closest {headings.REFSEQ_ID}')
+        self._header.append(f'Closest {headings.ENTREZ_ID}')
+        self._header.append(headings.CLOSEST_GENE_SYMBOL)
         self._header.append(
             f'Relative To Closest Gene {self._promoter_type}')
         self._header.append(f'TSS Closest Distance')
@@ -655,7 +696,7 @@ class RefSeqEnd(RefSeqTss):
     RefSeqStart.
     """
 
-    def __init__(self, file, refseq_genes: pychipseq.genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
+    def __init__(self, file, refseq_genes: genes.RefSeqGenes, prom_ext_5p: int, prom_ext_3p: int):
         super().__init__(file, refseq_genes, prom_ext_5p, prom_ext_3p)
 
         print(
@@ -698,7 +739,7 @@ class RefSeqEnd(RefSeqTss):
             # If the gene is on the negative strand, the promoter is around the
             # end coordinate on the forward strand
 
-            variant_id = pychipseq.genes.create_variant(
+            variant_id = genes.create_variant(
                 refseq, chr, start, end)
 
             #sys.stderr.write("var id " + variant_id + "\n")
@@ -727,9 +768,9 @@ class RefSeqEnd(RefSeqTss):
 
         print('Finished.', file=sys.stderr)
 
-        self._header.append(f'Closest End {pychipseq.headings.REFSEQ_ID}')
-        self._header.append(f'Closest End {pychipseq.headings.ENTREZ_ID}')
-        self._header.append(f'Closest End {pychipseq.headings.GENE_SYMBOL}')
+        self._header.append(f'Closest End {headings.REFSEQ_ID}')
+        self._header.append(f'Closest End {headings.ENTREZ_ID}')
+        self._header.append(f'Closest End {headings.GENE_SYMBOL}')
         self._header.append(
             f'Relative To Closest Gene End {self._promoter_type}')
         self._header.append(f'End Closest Distance')
@@ -737,8 +778,7 @@ class RefSeqEnd(RefSeqTss):
 
 class OverlapTss(genomic.Annotation):
     """
-    Find the closest gene to a given location using the genes end
-    location.
+    Determines if a region overlaps a TSS
     """
 
     def __init__(self, file: str, block_size: int = 100):
@@ -789,7 +829,7 @@ class OverlapTss(genomic.Annotation):
                 s = end
 
             # only interested in tss
-            gene = pychipseq.genes.RefSeqGene(
+            gene = genes.RefSeqGene(
                 refseq, entrez, symbol, strand, chr, s, s)
 
             self._search.add_feature(gene, gene)
@@ -812,6 +852,6 @@ class OverlapTss(genomic.Annotation):
                     ret.add(gene.symbol)
 
         if len(ret) == 0:
-            ret.add(pychipseq.text.NA)
+            ret.add(text.NA)
 
         return [';'.join(sorted(ret))]

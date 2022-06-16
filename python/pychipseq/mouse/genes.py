@@ -7,20 +7,16 @@ Created on Mon Sep  8 15:12:34 2014
 
 import sys
 import collections
-import re
 
-import lib.annotation
-import lib.expression
-import tss
-
-import lib.genomic
-import lib.headings
-import lib.text
-import lib.sample
-import lib.genes
+from . import tss
+from . import mouse
+from .. import text
+from .. import headings
+from .. import genes
+from .. import genomic
 
 
-class GeneOrientatedPeaks(object):
+class GeneOrientatedPeaks:
   """
   Core annotation for gene oriented peaks
   """
@@ -45,14 +41,14 @@ class GeneOrientatedPeaks(object):
     # skip header
     header = f.readline().strip().split("\t")
   
-    location_column = lib.text.find_index(header, lib.headings.LOCATION)
-    entrez_column = lib.text.find_index(header, lib.headings.ENTREZ_ID)
-    refseq_column = lib.text.find_index(header, lib.headings.REFSEQ_ID)
-    symbol_column = lib.text.find_index(header, lib.headings.GENE_SYMBOL)
-    type_column = lib.text.find_index(header, "Relative To Gene")
-    p_column = lib.text.find_index(header, lib.headings.P_VALUE)
-    score_column = lib.text.find_index(header, lib.headings.SCORE)
-    tss_column = lib.text.find_index(header, lib.headings.TSS_DISTANCE)
+    location_column = text.find_index(header, headings.LOCATION)
+    entrez_column = text.find_index(header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(header, headings.GENE_SYMBOL)
+    type_column = text.find_index(header, "Relative To Gene")
+    p_column = text.find_index(header, headings.P_VALUE)
+    score_column = text.find_index(header, headings.SCORE)
+    tss_column = text.find_index(header, headings.TSS_DISTANCE)
     
     for line in f:
       ls = line.strip()
@@ -94,18 +90,18 @@ class GeneOrientatedPeaks(object):
     
     
   def print_header(self):
-    sys.stdout.write(lib.headings.REFSEQ_ID)
-    sys.stdout.write("\t" + lib.headings.ENTREZ_ID)
-    sys.stdout.write("\t" + lib.headings.GENE_SYMBOL)
+    sys.stdout.write(headings.REFSEQ_ID)
+    sys.stdout.write("\t" + headings.ENTREZ_ID)
+    sys.stdout.write("\t" + headings.GENE_SYMBOL)
 
     sys.stdout.write("\t" + self.type + " Relative To Gene")
     sys.stdout.write("\t" + self.type + " TSS Closest Distance")
-    sys.stdout.write("\t" + self.type + " " + lib.headings.TSS_DISTANCE)
+    sys.stdout.write("\t" + self.type + " " + headings.TSS_DISTANCE)
     sys.stdout.write("\tBest P-value (ChIPseeqer)")
     sys.stdout.write("\tBest Score (ChIPseeqer)")
     sys.stdout.write("\t" + self.type + " Count")
     sys.stdout.write("\t" + self.type + " Genomic Locations (mm10)")
-    sys.stdout.write("\n");
+    sys.stdout.write("\n")
 
   
   def get_ids(self):
@@ -121,7 +117,7 @@ class GeneOrientatedPeaks(object):
     sys.stdout.write("\t" + ";".join(self.collapsed_types[id]))
     
     # if there are some nearest tss, print the closest
-    sys.stdout.write("\t" + lib.genomic.get_closest_tss(self.collapsed_tss[id]))
+    sys.stdout.write("\t" + genomic.get_closest_tss(self.collapsed_tss[id]))
           
     sys.stdout.write("\t" + ";".join(self.collapsed_tss[id]))
       
@@ -138,7 +134,7 @@ class GeneOrientatedPeaks(object):
       
     sys.stdout.write("\t" + ";".join(self.collapsed_locations[id]))
     
-    sys.stdout.write("\n");
+    sys.stdout.write("\n")
 
 
 class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
@@ -156,22 +152,22 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
     header = f.readline().strip().split("\t")
 
     # independent columns
-    location_column = lib.text.find_index(header, lib.headings.LOCATION)
-    p_column = lib.text.find_index(header, lib.headings.P_VALUE)
-    score_column = lib.text.find_index(header, lib.headings.SCORE)
-    centromere_column = lib.text.find_index(header, lib.headings.CENTROMERE)
+    location_column = text.find_index(header, headings.LOCATION)
+    p_column = text.find_index(header, headings.P_VALUE)
+    score_column = text.find_index(header, headings.SCORE)
+    centromere_column = text.find_index(header, headings.CENTROMERE)
 
-    entrez_column = lib.text.find_index(header, lib.headings.ENTREZ_ID)
-    refseq_column = lib.text.find_index(header, lib.headings.REFSEQ_ID)
-    symbol_column = lib.text.find_index(header, lib.headings.GENE_SYMBOL)
-    type_column = lib.text.find_index(header, lib.headings.RELATIVE)
-    tss_column = lib.text.find_index(header, lib.headings.TSS_DISTANCE)
+    entrez_column = text.find_index(header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(header, headings.GENE_SYMBOL)
+    type_column = text.find_index(header, headings.RELATIVE)
+    tss_column = text.find_index(header, headings.TSS_DISTANCE)
     
-    closest_entrez_column = lib.text.find_index(header, lib.headings.CLOSEST_ENTREZ_ID)
-    closest_refseq_column = lib.text.find_index(header, lib.headings.CLOSEST_REFSEQ_ID)
-    closest_symbol_column = lib.text.find_index(header, lib.headings.CLOSEST_GENE_SYMBOL)
-    closest_type_column = lib.text.find_index(header, lib.headings.CLOSEST_RELATIVE)
-    closest_tss_column = lib.text.find_index(header, lib.headings.CLOSEST_TSS_DISTANCE)
+    closest_entrez_column = text.find_index(header, headings.CLOSEST_ENTREZ_ID)
+    closest_refseq_column = text.find_index(header, headings.CLOSEST_REFSEQ_ID)
+    closest_symbol_column = text.find_index(header, headings.CLOSEST_GENE_SYMBOL)
+    closest_type_column = text.find_index(header, headings.CLOSEST_RELATIVE)
+    closest_tss_column = text.find_index(header, headings.CLOSEST_TSS_DISTANCE)
     
     for line in f:
       ls = line.strip()
@@ -187,7 +183,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
       
       centromere = tokens[centromere_column]
       
-      if tokens[entrez_column] != lib.text.NA:
+      if tokens[entrez_column] != text.NA:
         # Preference is given to peaks within a gene
         entrezes = tokens[entrez_column].split(";")
         symbols = tokens[symbol_column].split(";")
@@ -211,7 +207,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
         refseq = refseqs[i]
         tss = tsses[i]
 
-        if refseq != lib.text.NA:
+        if refseq != text.NA:
           self.refseqs.add(refseq)
           self.collapsed_entrezes[refseq] = entrez
           self.collapsed_symbols[refseq] = symbol
@@ -224,23 +220,23 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
     f.close()
 
 
-class RefSeqGenes(lib.genes.RefSeqGenes):
+class RefSeqGenes(genes.RefSeqGenes):
   def __init__(self):
-    super(RefSeqGenes, self).__init__(lib.mouse.annotation.REFSEQ_FILE)
+    super(RefSeqGenes, self).__init__(mouse.annotation.REFSEQ_FILE)
 
 
-class AnnotatePeak(lib.genes.AnnotatePeak):
+class AnnotatePeak(genes.AnnotatePeak):
   """
   Core annotation for annotating peaks/regions
   """
   
   def __init__(self, type, prom_ext_5p=5000, prom_ext_3p=4000, bin_size=10000):
-    lib.genes.AnnotatePeak.__init__(self, \
+    genes.AnnotatePeak.__init__(self, \
       type, \
-      lib.mouse.tss.RefSeqAnnotation(prom_ext_5p, prom_ext_3p, bin_size), \
+      tss.RefSeqAnnotation(prom_ext_5p, prom_ext_3p, bin_size), \
       RefSeqGenes(), \
-      lib.mouse.tss.RefSeqTss(prom_ext_5p, prom_ext_3p), \
-      lib.mouse.tss.RefSeqEnd(prom_ext_5p, prom_ext_3p), \
+      tss.RefSeqTssStart(prom_ext_5p, prom_ext_3p), \
+      tss.RefSeqEnd(prom_ext_5p, prom_ext_3p), \
       prom_ext_5p, \
       prom_ext_3p, \
       bin_size)

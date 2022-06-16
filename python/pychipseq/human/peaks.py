@@ -1,14 +1,22 @@
-import sys
+# -*- coding: utf-8 -*-
+"""
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with 
+this program. If not, see <https://www.gnu.org/licenses/>. 
+
+Copyright (C) 2022 Antony Holmes.
+"""
+
 import collections
-import re
-from typing import Mapping, Union
-
-import pychipseq.annotation
-import pychipseq.expression
-import pychipseq.tss
-import pychipseq.human.tss
-import pychipseq.human.annotation
-
+from .. import expression
+from . import tss as htss
+from . import human
 from .. import genomic
 from .. import headings
 from .. import text
@@ -31,30 +39,30 @@ class GeneOrientatedPeaks(object):
         self.expression_list = []
         self.expression_list_headers = []
 
-        #self.affy_gene_cb_vs_m_expression = pychipseq.expression.AffyGeneCBvsMExpression()
-        #self.affy_gene_cb_vs_n_expression = pychipseq.expression.AffyGeneCBvsNExpression()
-        #self.rna_gene_cb_vs_m_expression = pychipseq.expression.RnaSeqGeneCBvsMExpression()
-        #self.rna_gene_cb_vs_n_expression = pychipseq.expression.RnaSeqGeneCBvsNExpression()
+        #self.affy_gene_cb_vs_m_expression = expression.AffyGeneCBvsMExpression()
+        #self.affy_gene_cb_vs_n_expression = expression.AffyGeneCBvsNExpression()
+        #self.rna_gene_cb_vs_m_expression = expression.RnaSeqGeneCBvsMExpression()
+        #self.rna_gene_cb_vs_n_expression = expression.RnaSeqGeneCBvsNExpression()
 
         self.expression_list_headers.append('GEP Affy GCvsN')
         self.expression_list_headers.append('GEP Affy GCvsM')
         self.expression_list.append(
-            pychipseq.expression.AffyGeneCBvsNExpression())
+            expression.AffyGeneCBvsNExpression())
         self.expression_list.append(
-            pychipseq.expression.AffyGeneCBvsMExpression())
+            expression.AffyGeneCBvsMExpression())
 
         self.expression_list_headers.append('RNA-seq GCvsN')
         self.expression_list_headers.append('RNA-seq GCvsM')
         self.expression_list.append(
-            pychipseq.expression.RnaSeqGeneCBvsNExpression())
+            expression.RnaSeqGeneCBvsNExpression())
         self.expression_list.append(
-            pychipseq.expression.RnaSeqGeneCBvsMExpression())
+            expression.RnaSeqGeneCBvsMExpression())
 
         # RNA-seq from deseq2
         #self.expression_list_headers.append('RNA-seq GCvsN DeSeq2')
         #self.expression_list_headers.append('RNA-seq GCvsM DeSeq2')
-        # self.expression_list.append(pychipseq.expression.RnaSeqGeneCBvsNDeSeq2Expression())
-        # self.expression_list.append(pychipseq.expression.RnaSeqGeneCBvsMDeSeq2Expression())
+        # self.expression_list.append(expression.RnaSeqGeneCBvsNDeSeq2Expression())
+        # self.expression_list.append(expression.RnaSeqGeneCBvsMDeSeq2Expression())
 
         #
         # SUD10 stuff
@@ -63,11 +71,11 @@ class GeneOrientatedPeaks(object):
         self.expression_list_headers.append('RNA-seq SUD10 WTvsSTOP')
         self.expression_list_headers.append('RNA-seq SUD10 D83VvsSTOP')
         self.expression_list.append(
-            pychipseq.expression.RnaSeqGeneSUD10WTvsD83vExpression())
+            expression.RnaSeqGeneSUD10WTvsD83vExpression())
         self.expression_list.append(
-            pychipseq.expression.RnaSeqGeneSUD10WTvsStopExpression())
+            expression.RnaSeqGeneSUD10WTvsStopExpression())
         self.expression_list.append(
-            pychipseq.expression.RnaSeqGeneSUD10D83vsStopExpression())
+            expression.RnaSeqGeneSUD10D83vsStopExpression())
 
         #
         # Mouse MEF2B vs WT
@@ -75,16 +83,16 @@ class GeneOrientatedPeaks(object):
 
         self.expression_list_headers.append('GEP Affy MEF2B Mouse WTvsKO')
         self.expression_list.append(
-            pychipseq.expression.GEPMEF2BMouseWTvsKOExpression())
+            expression.GEPMEF2BMouseWTvsKOExpression())
 
         #
         # miR annotations
         #
 
-        self.solid_mir_expression = pychipseq.expression.SolidMirExpression()
-        self.solid_mir_cb_vs_n_expression = pychipseq.expression.SolidMirCBvsNExpression()
-        self.agilent_mir_cb_vs_m_expression = pychipseq.expression.AgilentMirCBvsMExpression()
-        self.agilent_mir_cb_vs_n_expression = pychipseq.expression.AgilentMirCBvsNExpression()
+        self.solid_mir_expression = expression.SolidMirExpression()
+        self.solid_mir_cb_vs_n_expression = expression.SolidMirCBvsNExpression()
+        self.agilent_mir_cb_vs_m_expression = expression.AgilentMirCBvsMExpression()
+        self.agilent_mir_cb_vs_n_expression = expression.AgilentMirCBvsNExpression()
 
         #
         # Sets for annotations
@@ -462,7 +470,7 @@ class ClosestGeneOrientatedPeaks(GeneOrientatedPeaks):
 
 class RefSeqGenes(genes.RefSeqGenes):
     def __init__(self):
-        super().__init__(pychipseq.human.annotation.REFSEQ_FILE)
+        super().__init__(human.REFSEQ_FILE)
 
 
 REFSEQ_GENES = RefSeqGenes()
@@ -480,7 +488,7 @@ class AnnotatePeak(peaks.AnnotatePeak):
                  bin_size: int = 10000,
                  n_closest: int = 5):
         super().__init__(type,
-                         pychipseq.human.tss.RefSeqAnnotation(
+                         htss.RefSeqAnnotationFactory.getInstance(
                              prom_ext_5p, prom_ext_3p, bin_size),
                          REFSEQ_GENES,
                          prom_ext_5p,
@@ -488,11 +496,11 @@ class AnnotatePeak(peaks.AnnotatePeak):
         # annotations specific to human
 
         # default closest gene
-        refseq_start = pychipseq.human.tss.RefSeqStart(
+        refseq_start = htss.RefSeqStart(
             REFSEQ_GENES, prom_ext_5p, prom_ext_3p)
 
         self.add_module(refseq_start)
-        self.add_module(pychipseq.human.tss.RefSeqEnd(
+        self.add_module(htss.RefSeqEnd(
             REFSEQ_GENES, prom_ext_5p, prom_ext_3p))
 
         self.add_module(
@@ -507,4 +515,4 @@ class AnnotatePeak(peaks.AnnotatePeak):
         self.add_module(ht.GencodeTADAnnotation())
         self.add_module(tad.IsTADAnnotation())
         self.add_module(tad.IsClosestTADAnnotation())
-        self.add_module(pychipseq.human.tss.OverlapTss())
+        self.add_module(htss.OverlapTss())

@@ -1,21 +1,29 @@
 # -*- coding: utf-8 -*-
 """
-Functions related to overlaps between peaks and genes
+Functions related to overlaps between peaks and genes.
 
-Created on Mon Oct  6 11:52:41 2014
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with 
+this program. If not, see <https://www.gnu.org/licenses/>. 
 
-@author: Antony Holmes
+Copyright (C) 2022 Antony Holmes.
 """
 
 import re
 
-import pychipseq.human.peaks
-import pychipseq.text
-import pychipseq.headings
-import pychipseq.regions
-import pychipseq.genes
+from . import peaks
+from .. import text
+from .. import headings
+from .. import regions
+from .. import genes
   
-class GeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeaks):
+class GeneOrientatedRegionIntersections(peaks.GeneOrientatedPeaks):
   """
   Annotate genes that are part of intersections only.
   """
@@ -34,22 +42,22 @@ class GeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeak
     # skip header
     header = f.readline().strip().split("\t")
   
-    location_column = pychipseq.text.find_index(header, pychipseq.headings.LOCATION)
-    entrez_column = pychipseq.text.find_index(header, pychipseq.headings.ENTREZ_ID)
-    refseq_column = pychipseq.text.find_index(header, pychipseq.headings.REFSEQ_ID)
-    symbol_column = pychipseq.text.find_index(header, pychipseq.headings.GENE_SYMBOL)
-    type_column = pychipseq.text.find_index(header, "Relative To Gene")
-    #p_column = pychipseq.text.find_index(header, pychipseq.headings.P_VALUE)
-    #score_column = pychipseq.text.find_index(header, pychipseq.headings.SCORE)
-    tss_column = pychipseq.text.find_index(header, pychipseq.headings.TSS_DISTANCE)
-    sample_column = pychipseq.text.find_index(header, pychipseq.headings.SAMPLE)
-    centromere_column = pychipseq.text.find_index(header, pychipseq.headings.CENTROMERE)
+    location_column = text.find_index(header, headings.LOCATION)
+    entrez_column = text.find_index(header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(header, headings.GENE_SYMBOL)
+    type_column = text.find_index(header, "Relative To Gene")
+    #p_column = text.find_index(header, headings.P_VALUE)
+    #score_column = text.find_index(header, headings.SCORE)
+    tss_column = text.find_index(header, headings.TSS_DISTANCE)
+    sample_column = text.find_index(header, headings.SAMPLE)
+    centromere_column = text.find_index(header, headings.CENTROMERE)
     
-    sample_columns = pychipseq.regions.get_sample_column_count(header)
+    sample_columns = regions.get_sample_column_count(header)
 
-    mir_column = pychipseq.text.find_index(header, pychipseq.headings.MIR_SYMBOL)
-    mir_type_column = pychipseq.text.find_index(header, "Relative To miR")
-    mss_column = pychipseq.text.find_index(header, "mIR Start Distance")
+    mir_column = text.find_index(header, headings.MIR_SYMBOL)
+    mir_type_column = text.find_index(header, "Relative To miR")
+    mss_column = text.find_index(header, "mIR Start Distance")
     
     for line in f:
       ls = line.strip()
@@ -60,8 +68,8 @@ class GeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeak
       tokens = ls.split("\t")
 
       type = tokens[type_column]
-      p = pychipseq.genes.find_best_p_value(header, tokens) #float(tokens[p_column])
-      score = pychipseq.genes.find_best_score(header, tokens) #float(tokens[score_column])
+      p = genes.find_best_p_value(header, tokens) #float(tokens[p_column])
+      score = genes.find_best_score(header, tokens) #float(tokens[score_column])
       location = tokens[location_column]
       centromere = tokens[centromere_column]
       
@@ -70,7 +78,7 @@ class GeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeak
       #sys.stderr.write("sample column " + str(sample_column) + " " + str(sample_columns) + "\n")      
       
       for i in range(0, sample_columns):
-        if tokens[sample_column + i] == pychipseq.text.NA:
+        if tokens[sample_column + i] == text.NA:
           intersection = False
           break
         
@@ -113,7 +121,7 @@ class GeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeak
     f.close()
     
 
-class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrientatedPeaks):
+class ClosestGeneOrientatedRegionIntersections(peaks.GeneOrientatedPeaks):
   def __init__(self):
     super().__init__("Region")
     
@@ -128,36 +136,36 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
     # skip header
     header = f.readline().strip().split("\t")
   
-    location_column = pychipseq.text.find_index(header, pychipseq.headings.LOCATION)
-    p_column = pychipseq.text.find_index(header, pychipseq.headings.P_VALUE)
-    score_column = pychipseq.text.find_index(header, pychipseq.headings.SCORE)
-    centromere_column = pychipseq.text.find_index(header, pychipseq.headings.CENTROMERE)
+    location_column = text.find_index(header, headings.LOCATION)
+    p_column = text.find_index(header, headings.P_VALUE)
+    score_column = text.find_index(header, headings.SCORE)
+    centromere_column = text.find_index(header, headings.CENTROMERE)
 
-    entrez_column = pychipseq.text.find_index(header, pychipseq.headings.ENTREZ_ID)
-    refseq_column = pychipseq.text.find_index(header, pychipseq.headings.REFSEQ_ID)
-    symbol_column = pychipseq.text.find_index(header, pychipseq.headings.GENE_SYMBOL)
-    type_column = pychipseq.text.find_index(header, pychipseq.headings.RELATIVE)
-    tss_column = pychipseq.text.find_index(header, pychipseq.headings.TSS_DISTANCE)
+    entrez_column = text.find_index(header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(header, headings.GENE_SYMBOL)
+    type_column = text.find_index(header, headings.RELATIVE)
+    tss_column = text.find_index(header, headings.TSS_DISTANCE)
     
-    closest_entrez_column = pychipseq.text.find_index(header, pychipseq.headings.CLOSEST_ENTREZ_ID)
-    closest_refseq_column = pychipseq.text.find_index(header, pychipseq.headings.CLOSEST_REFSEQ_ID)
-    closest_symbol_column = pychipseq.text.find_index(header, pychipseq.headings.CLOSEST_GENE_SYMBOL)
-    closest_type_column = pychipseq.text.find_index(header, pychipseq.headings.CLOSEST_RELATIVE)
-    closest_tss_column = pychipseq.text.find_index(header, pychipseq.headings.CLOSEST_TSS_DISTANCE)
-    
-    
-    mir_column = pychipseq.text.find_index(header, pychipseq.headings.MIR_SYMBOL)
-    mir_type_column = pychipseq.text.find_index(header, "Relative To miR")
-    mss_column = pychipseq.text.find_index(header, "mIR Start Distance")
+    closest_entrez_column = text.find_index(header, headings.CLOSEST_ENTREZ_ID)
+    closest_refseq_column = text.find_index(header, headings.CLOSEST_REFSEQ_ID)
+    closest_symbol_column = text.find_index(header, headings.CLOSEST_GENE_SYMBOL)
+    closest_type_column = text.find_index(header, headings.CLOSEST_RELATIVE)
+    closest_tss_column = text.find_index(header, headings.CLOSEST_TSS_DISTANCE)
     
     
-    sample_column = pychipseq.text.find_index(header, pychipseq.headings.SAMPLE)
+    mir_column = text.find_index(header, headings.MIR_SYMBOL)
+    mir_type_column = text.find_index(header, "Relative To miR")
+    mss_column = text.find_index(header, "mIR Start Distance")
     
-    sample_columns = pychipseq.regions.get_sample_column_count(header)
+    
+    sample_column = text.find_index(header, headings.SAMPLE)
+    
+    sample_columns = regions.get_sample_column_count(header)
 
-    mir_column = pychipseq.text.find_index(header, pychipseq.headings.MIR_SYMBOL)
-    mir_type_column = pychipseq.text.find_index(header, "Relative To miR")
-    mss_column = pychipseq.text.find_index(header, "mIR Start Distance")
+    mir_column = text.find_index(header, headings.MIR_SYMBOL)
+    mir_type_column = text.find_index(header, "Relative To miR")
+    mss_column = text.find_index(header, "mIR Start Distance")
     
     for line in f:
       ls = line.strip()
@@ -171,7 +179,7 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
       intersection = True
       
       for i in range(0, sample_columns):
-        if tokens[sample_column + i] == pychipseq.text.NA:
+        if tokens[sample_column + i] == text.NA:
           intersection = False
           break
         
@@ -184,7 +192,7 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
       location = tokens[location_column]
       centromere = tokens[centromere_column]
       
-      if tokens[entrez_column] != pychipseq.text.NA:
+      if tokens[entrez_column] != text.NA:
         # Preference is given to peaks within a gene
         entrezes = tokens[entrez_column].split(";")
         symbols = tokens[symbol_column].split(";")
@@ -205,7 +213,7 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
         symbol = symbols[i]
         tss = tsses[i]
         
-        if refseq != pychipseq.text.NA:
+        if refseq != text.NA:
           self.refseqs.add(refseq)
           self.collapsed_entrezes[refseq] = entrez
           self.collapsed_symbols[refseq] = symbol
@@ -218,7 +226,7 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
         
       mir = tokens[mir_column]
     
-      if mir != pychipseq.text.NA:
+      if mir != text.NA:
         self.mirs.add(mir)
         self.collapsed_types[mir].append(tokens[mir_type_column])
         self.collapsed_p[mir].append(p)
@@ -230,7 +238,7 @@ class ClosestGeneOrientatedRegionIntersections(pychipseq.human.peaks.GeneOrienta
     f.close()
     
 
-class GeneOrientatedRegionCores(pychipseq.human.peaks.GeneOrientatedPeaks):
+class GeneOrientatedRegionCores(peaks.GeneOrientatedPeaks):
   """
   For annotating peaks that lie within any of the three way intersections
   """
@@ -249,20 +257,20 @@ class GeneOrientatedRegionCores(pychipseq.human.peaks.GeneOrientatedPeaks):
     # skip header
     header = f.readline().strip().split("\t")
   
-    location_column = pychipseq.text.find_index(header, pychipseq.headings.LOCATION)
-    entrez_column = pychipseq.text.find_index(header, pychipseq.headings.ENTREZ_ID)
-    refseq_column = pychipseq.text.find_index(header, pychipseq.headings.REFSEQ_ID)
-    symbol_column = pychipseq.text.find_index(header, pychipseq.headings.GENE_SYMBOL)
-    type_column = pychipseq.text.find_index(header, "Relative To Gene")
-    p_column = pychipseq.text.find_index(header, pychipseq.headings.P_VALUE)
-    score_column = pychipseq.text.find_index(header, pychipseq.headings.SCORE)
-    tss_column = pychipseq.text.find_index(header, pychipseq.headings.TSS_DISTANCE)
-    centromere_column = pychipseq.text.find_index(header, pychipseq.headings.CENTROMERE)
-    sample_column = pychipseq.text.find_index(header, pychipseq.headings.SAMPLE)
+    location_column = text.find_index(header, headings.LOCATION)
+    entrez_column = text.find_index(header, headings.ENTREZ_ID)
+    refseq_column = text.find_index(header, headings.REFSEQ_ID)
+    symbol_column = text.find_index(header, headings.GENE_SYMBOL)
+    type_column = text.find_index(header, "Relative To Gene")
+    p_column = text.find_index(header, headings.P_VALUE)
+    score_column = text.find_index(header, headings.SCORE)
+    tss_column = text.find_index(header, headings.TSS_DISTANCE)
+    centromere_column = text.find_index(header, headings.CENTROMERE)
+    sample_column = text.find_index(header, headings.SAMPLE)
     
-    mir_column = pychipseq.text.find_index(header, pychipseq.headings.MIR_SYMBOL)
-    mir_type_column = pychipseq.text.find_index(header, "Relative To miR")
-    mss_column = pychipseq.text.find_index(header, "mIR Start Distance")
+    mir_column = text.find_index(header, headings.MIR_SYMBOL)
+    mir_type_column = text.find_index(header, "Relative To miR")
+    mss_column = text.find_index(header, "mIR Start Distance")
     
     for line in f:
       ls = line.strip()

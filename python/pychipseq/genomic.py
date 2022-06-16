@@ -69,6 +69,37 @@ class Location:
         return self.__str__()
 
 
+class Chromosomes:
+    """
+    Chromosome sizes
+    """
+
+    def __init__(self, file: str):
+        self._sizes = collections.defaultdict(int)
+
+        f = open(file, "r")
+
+        f.readline()
+
+        for line in f:
+            line = line.strip()
+
+            if len(line) == 0:
+                continue
+
+            tokens = line.split("\t")
+
+            chr = tokens[0]
+            size = int(tokens[1])
+
+            self._sizes[chr] = size
+
+        f.close()
+
+    def get_size(self, chr):
+        return self._sizes[chr]
+
+
 class FeatureSet:
     def __init__(self, start):
         self._start: int = start
@@ -597,23 +628,56 @@ class GenomicBedOverlap(GenomicFeaturesOverlap):
 
 
 class Annotation(ABC):
+    """ 
+    Modules for annotating a peak by appending columns to a row of
+    peak meta data.
+    """
+    
     @abstractmethod
     def get_names(self) -> list[str]:
+        """
+        Returns the heading names to add.
+
+        Returns:
+            list[str]: headers.
+        """        
         ...
 
-    def annotate(self, location: Location) -> list[Union[str, int, float]]:
-        return []
-
-    def update_row(self, location: Location, row_map: Mapping[str, Any]) -> list[Union[str, int, float]]:
-        return self.annotate(location)
-
-
-class ClassifyRegion(ABC):
-    """
-    Returns a class label for a region, such as identifying
-    a telomere.
-    """
+    # def annotate(self, location: Location) -> list[Union[str, int, float]]:
+    #     return []
 
     @abstractmethod
+    def update_row(self, location: Location, row_map: Mapping[str, Any]) -> list[Any]:
+        """
+        Given existing row annotation, return the new columns to add. Columns should
+        match the headers returned in get_names().
+
+        Args:
+            location (Location): Location to annotated.
+            row_map (Mapping[str, Any]):    Annotations already assigned using 
+                                            header name as key. This is to
+                                            allow annotation to be based on
+                                            previous modules.
+
+        Returns:
+            list[Union[Any]]: list of columns.
+        """        
+        ... #self.annotate(location)
+
+    def version(self) -> str:
+        return '1.0.0'
+        
+
+class ClassifyRegion(ABC):
+    @abstractmethod
     def get_classification(self, location: Location) -> str:
+        """
+        Returns a class label for a region, such as identifying a telomere.
+
+        Args:
+            location (Location): Location to classify.
+
+        Returns:
+            str: a class label.
+        """        
         ...

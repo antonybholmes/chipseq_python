@@ -1,81 +1,102 @@
-import collections
+# -*- coding: utf-8 -*-
+"""
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software 
+Foundation, either version 3 of the License, or (at your option) any later 
+version.
+This program is distributed in the hope that it will be useful, but WITHOUT 
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with 
+this program. If not, see <https://www.gnu.org/licenses/>. 
+
+Copyright (C) 2022 Antony Holmes.
+"""
+
 from typing import Any, Mapping, Union
-import pychipseq.text
-import pychipseq.genomic
+from .. import text
+from .. import genomic
+from . import human
 
+class HumanChromosomes(genomic.Chromosomes):
+    _instance = None
 
-class Chromosomes:
-    """
-    Chromosome sizes
-    """
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def __init__(self):
-        self._sizes = collections.defaultdict(int)
-
-        f = open(
-            "/ifs/scratch/cancer/Lab_RDF/ngs/references/ucsc/hg19_chromosome_sizes.txt", "r")
-
-        f.readline()
-
-        for line in f:
-            line = line.strip()
-
-            if len(line) == 0:
-                continue
-
-            tokens = line.split("\t")
-
-            chr = tokens[0]
-            size = int(tokens[1])
-
-            self._sizes[chr] = size
-
-        f.close()
-
-    def get_size(self, chr):
-        return self._sizes[chr]
+        super().__init__(human.CHROM_SIZE_FILE)
+        print("Initializing Human Chromosomes")
 
 
-class Telomeres(pychipseq.genomic.ClassifyRegion):
+class HumanCentromeres(genomic.SearchGenomicBedFeatures):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        super().__init__(human.UCSC_CENTROMERES_FILE)
+        print("Initializing Human Centromeres")
+
+
+class HumanPericentromeres(genomic.SearchGenomicBedFeatures):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        super().__init__(human.RDF_PERICENTROMERES_FILE)
+        print("Initializing Human Pericentromeres")
+
+
+class Telomeres(genomic.ClassifyRegion):
     """
     Determine whether a location overlaps a centromere
     """
 
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
-        self._chromosomes = Chromosomes()
+        self._chromosomes = HumanChromosomes()
 
-    def get_classification(self, location: pychipseq.genomic.Location):
+    def get_classification(self, location: genomic.Location):
         end = self._chromosomes.get_size(
-            location.chr) - pychipseq.genomic.TELOMERE_SIZE
+            location.chr) - genomic.TELOMERE_SIZE
 
-        if location.start <= pychipseq.genomic.TELOMERE_SIZE:
+        if location.start <= genomic.TELOMERE_SIZE:
             classification = "peri_telomeric"
         elif location.end >= end:
             classification = "peri_telomeric"
         else:
-            classification = pychipseq.text.NA
+            classification = text.NA
 
         return classification
 
 
-class Centromeres(pychipseq.genomic.ClassifyRegion):
+class Centromeres(genomic.ClassifyRegion):
     """
     Determine whether a location overlaps a centromere
     """
 
     def __init__(self):
-        centromeres = pychipseq.genomic.SearchGenomicBedFeatures(
-            "/ifs/scratch/cancer/Lab_RDF/ngs/references/ucsc/ucsc_centromeres_hg19.bed")
-        pericentromeres = pychipseq.genomic.SearchGenomicBedFeatures(
-            "/ifs/scratch/cancer/Lab_RDF/ngs/references/rdf/rdf_pericentromeres_hg19.bed")
+        self.cen_overlaps = genomic.GenomicFeaturesOverlap(HumanCentromeres())
+        self.p_cen_overlaps = genomic.GenomicFeaturesOverlap(HumanPericentromeres())
 
-        self.cen_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(
-            centromeres)
-        self.p_cen_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(
-            pericentromeres)
-
-    def get_classification(self, location: pychipseq.genomic.Location):
-        classification = pychipseq.text.NA
+    def get_classification(self, location: genomic.Location):
+        classification = text.NA
 
         # Are we in a centromere
         in_centromere = False
@@ -104,7 +125,7 @@ class Centromeres(pychipseq.genomic.ClassifyRegion):
         return classification
 
 
-class Repetitive(pychipseq.genomic.Annotation):
+class Repetitive(genomic.Annotation):
     """
     Determine whether a location overlaps a repetitive region
     """
@@ -113,7 +134,7 @@ class Repetitive(pychipseq.genomic.Annotation):
         self._centromeres = Centromeres()
         self._telomeres = Telomeres()
 
-    def get_classification(self, location: pychipseq.genomic.Location):
+    def get_classification(self, location: genomic.Location):
         classifications = set()
 
         classifications.add(self._centromeres.get_classification(location))
@@ -121,113 +142,111 @@ class Repetitive(pychipseq.genomic.Annotation):
 
         # If there are multiple classifications, get rid of the n/a
         if len(classifications) > 1:
-            classifications.remove(pychipseq.text.NA)
+            classifications.remove(text.NA)
 
         return sorted(classifications)
 
     def get_names(self):
         return ["Centromere/Telomere"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
-        ret = ','.join(sorted(self.get_classification(location)))
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
+        ret = ",".join(sorted(self.get_classification(location)))
 
         return [ret]
 
 
-class SimpleTandemRepeats(pychipseq.genomic.Annotation):
+class SimpleTandemRepeats(genomic.Annotation):
     """
     Determine whether a location overlaps a centromere
     """
 
     def __init__(self):
-        trf = pychipseq.genomic.SearchGenomicBedFeatures(
-            "/ifs/scratch/cancer/Lab_RDF/ngs/references/ucsc/assembly/hg19/simple_tandem_repeats_hg19.bed")
-        self._trf_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(trf)
+        trf = genomic.SearchGenomicBedFeatures(
+            human.TANDEM_REPEATS_FILE)
+        self._trf_overlaps = genomic.GenomicFeaturesOverlap(trf)
 
     def get_names(self):
         return ["Simple Tandem Repeats"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
         overlap = self._trf_overlaps.get_max_overlap(location)
 
         if overlap is not None:
             classification = "tandem_repeat"
         else:
-            classification = pychipseq.text.NA
+            classification = text.NA
 
         return [classification]
 
 
-class EncodeBlacklist(pychipseq.genomic.Annotation):
+class EncodeBlacklist(genomic.Annotation):
     """
     Determine whether a location overlaps a centromere
     """
 
     def __init__(self):
-        f = pychipseq.genomic.SearchGenomicBedFeatures(
-            '/ifs/scratch/cancer/Lab_RDF/ngs/references/encode/chipseq/blacklist.bed')
+        f = genomic.SearchGenomicBedFeatures(human.ENCODE_BLACKLIST_FILE)
 
-        self._trf_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(f)
+        self._trf_overlaps = genomic.GenomicFeaturesOverlap(f)
 
     def get_names(self):
         return ["ENCODE blacklist"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Union[str, int, float]]):
         overlap = self._trf_overlaps.get_max_overlap(location)
 
         if overlap is not None:
             classification = "encode_blacklist"
         else:
-            classification = pychipseq.text.NA
+            classification = text.NA
 
         return [classification]
 
 
-class GiuliaBlacklist(pychipseq.genomic.Annotation):
+class GiuliaBlacklist(genomic.Annotation):
     """
     Determine whether a location overlaps a centromere
     """
 
     def __init__(self):
-        f = pychipseq.genomic.SearchGenomicBedFeatures(
-            '/ifs/scratch/cancer/Lab_RDF/ngs/references/rdf/rdf_giulia_blacklist_hg19.bed')
+        f = genomic.SearchGenomicBedFeatures(human.GIULIA_BLACKLIST_FILE)
 
-        self._trf_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(f)
+        self._trf_overlaps = genomic.GenomicFeaturesOverlap(f)
 
     def get_names(self):
         return ["Giulia blacklist"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Any]):
+    def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
         overlap = self._trf_overlaps.get_max_overlap(location)
 
         if overlap is not None:
             classification = "giulia_blacklist"
         else:
-            classification = pychipseq.text.NA
+            classification = text.NA
 
         return [classification]
 
 
-class Nnnn(pychipseq.genomic.Annotation):
-    """
-    Determine whether a location overlaps a centromere
-    """
+# class Nnnn(genomic.Annotation):
+#     """
+#     Determine whether a location overlaps a centromere
+#     """
 
-    def __init__(self):
-        nnnn = pychipseq.genomic.SearchGenomicBedFeatures(
-            "/ifs/scratch/cancer/Lab_RDF/ngs/references/ucsc/assembly/hg19/nnnn_hg19.bed")
+#     def __init__(self):
+#         nnnn = genomic.SearchGenomicBedFeatures(
+#             "/ifs/scratch/cancer/Lab_RDF/ngs/references/ucsc/assembly/hg19/nnnn_hg19.bed")
 
-        self._nnnn_overlaps = pychipseq.genomic.GenomicFeaturesOverlap(nnnn)
+#         self._nnnn_overlaps = genomic.GenomicFeaturesOverlap(nnnn)
 
-    def get_names(self):
-        return ["NNNNs"]
+#     def get_names(self):
+#         return ["NNNNs"]
 
-    def update_row(self, location: pychipseq.genomic.Location, row_map: Mapping[str, Any]):
-        overlap = self._nnnn_overlaps.get_max_overlap(location)
+#     def update_row(self, location: genomic.Location, row_map: Mapping[str, Any]):
+#         overlap = self._nnnn_overlaps.get_max_overlap(location)
 
-        if overlap is not None:
-            classification = "nnnn"
-        else:
-            classification = pychipseq.text.NA
+#         if overlap is not None:
+#             classification = "nnnn"
+#         else:
+#             classification = text.NA
 
-        return [classification]
+#         return [classification]

@@ -28,11 +28,11 @@ class TADAnnotation(genomic.Annotation):
     """
 
     def __init__(self, file:str, bin_size: int = 100):
-        """_summary_
+        """Create new tad annotation object.
 
         Args:
-            file (str): _description_
-            bin_size (int, optional): _description_. Defaults to 100.
+            file (str): file of TAD annotations.
+            bin_size (int, optional): Search bin size. Defaults to 100.
         """        
 
         self._bin_size = bin_size
@@ -136,6 +136,20 @@ class TADAnnotation(genomic.Annotation):
         row_map[TAD_HEADING] = genes
 
         return [domains, genes]
+
+
+class TADAnnotationFactory:
+    _classifiers = collections.defaultdict(lambda: {})
+
+    @staticmethod
+    def getInstance(file: str, bin_size: int = 100):
+        if bin_size not in TADAnnotationFactory._classifiers[file]:
+            TADAnnotationFactory._classifiers[file][bin_size] = TADAnnotation(file, bin_size)
+
+        return TADAnnotationFactory._classifiers[file][bin_size]
+
+    def __init__(self):
+        raise Exception("Call TADAnnotationFactory.getInstance()")
 
 
 class IsTADAnnotation(genomic.Annotation):

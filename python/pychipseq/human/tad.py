@@ -1,8 +1,14 @@
 from .. import tad
-
-TAD_FILE = '/ifs/scratch/cancer/Lab_RDF/ngs/references/rdf/tad/hg19/tads.gencode.v38lift37.genes.approved.tsv'
+from . import human
 
 
 class GencodeTADAnnotation(tad.TADAnnotation):
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+        
     def __init__(self, bin_size=100):
-        super().__init__(TAD_FILE, bin_size=bin_size)
+        super().__init__(human.TAD_FILE, bin_size=bin_size)

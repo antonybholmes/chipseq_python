@@ -537,7 +537,7 @@ class CustomExpression:
         header = f.readline().strip().split("\t")
         header.append(self.type)
 
-        sys.stdout.write("\t".join(header) + "\n")
+        print("\t".join(header))
 
         entrez_column = text.find_index(
             header, headings.ENTREZ_ID)
@@ -554,6 +554,6 @@ class CustomExpression:
 
             tokens.append(self.expression.get_expression(entrez))
 
-            sys.stdout.write("\t".join(tokens) + "\n")
+            print("\t".join(tokens))
 
         f.close()
